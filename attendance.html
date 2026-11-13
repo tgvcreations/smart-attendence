@@ -441,7 +441,9 @@ tr:hover td{background:rgba(255,255,255,.03);}
             <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
             Start Camera
           </button>
-          <button class="btn btn-danger" id="btn-stop-att" onclick="stopCam('att')" disabled>Stop</button>
+          <button class="btn btn-success" id="btn-punch-in" onclick="manualPunch('in')" style="display:none;">🟢 Punch In</button>
+          <button class="btn btn-danger" id="btn-punch-out" onclick="manualPunch('out')" style="display:none;">🔴 Punch Out</button>
+          <button class="btn btn-ghost" id="btn-stop-att" onclick="stopCam('att')" disabled>Stop</button>
         </div>
       </div>
       <div style="flex:1;min-width:220px;">
@@ -573,7 +575,7 @@ tr:hover td{background:rgba(255,255,255,.03);}
     <div class="section-header">
       <div><h2>Working Hours & Settings</h2><p>Configure thresholds for Full Day and Half Day attendance status</p></div>
     </div>
-    <div class="card" style="max-width:500px;">
+    <div class="card" style="max-width:500px;margin-bottom:20px;">
       <div class="card-title" style="margin-bottom:14px;">Attendance Thresholds</div>
       <div class="form-group">
         <label>Full Day Minimum Hours</label>
@@ -586,6 +588,25 @@ tr:hover td{background:rgba(255,255,255,.03);}
         <div style="font-size:.72rem;color:var(--muted);margin-top:4px;">Hours required to mark as Half Day (below this is Short Hours)</div>
       </div>
       <button class="btn btn-primary" onclick="saveSettings()">Save Settings</button>
+    </div>
+
+    <div class="card" style="max-width:500px;">
+      <div class="card-title" style="margin-bottom:14px;">🌐 Cloud Sync (Cross-Device)</div>
+      <div style="font-size:.82rem;color:var(--muted);margin-bottom:12px;">
+        To sync registrations and attendance across multiple devices, enter your free <a href="https://jsonbin.io" target="_blank" style="color:var(--accent);">JSONBin.io</a> Bin ID and Master Key.
+      </div>
+      <div class="form-group">
+        <label>JSONBin Bin ID</label>
+        <input type="text" id="cfg-binid" placeholder="e.g. 648f..."/>
+      </div>
+      <div class="form-group">
+        <label>JSONBin Master Key ($2a$...)</label>
+        <input type="text" id="cfg-apikey" placeholder="e.g. $2a$10$..."/>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:14px;">
+        <button class="btn btn-success" onclick="syncWithCloud(true)">☁️ Sync Now</button>
+        <button class="btn btn-ghost" onclick="saveCloudConfig()">Save Credentials</button>
+      </div>
     </div>
   </div>
 
@@ -768,6 +789,8 @@ async function startAttendanceCam(){
     vid.srcObject = attStream;
     await new Promise(r=>vid.onloadedmetadata=r);
     document.getElementById('btn-start-att').disabled = true;
+    document.getElementById('btn-punch-in').style.display = 'inline-flex';
+    document.getElementById('btn-punch-out').style.display = 'inline-flex';
     document.getElementById('btn-stop-att').disabled = false;
     document.getElementById('scan-line').style.display = 'block';
     attRunning = true;
@@ -848,6 +871,8 @@ function stopCam(which){
     document.getElementById('cam-video').srcObject=null;
     document.getElementById('cam-canvas').getContext('2d').clearRect(0,0,9999,9999);
     document.getElementById('btn-start-att').disabled=false;
+    document.getElementById('btn-punch-in').style.display = 'none';
+    document.getElementById('btn-punch-out').style.display = 'none';
     document.getElementById('btn-stop-att').disabled=true;
     document.getElementById('rec-status').textContent='Camera stopped';
     document.getElementById('cam-name-tag').style.display='none';
@@ -861,9 +886,142 @@ function stopCam(which){
   }
 }
 
-// ═══════════════════════════════════════
-//  SETTINGS & THRESHOLDS
-// ═══════════════════════════════════════
+function saveCloudConfig(){
+  const binId = document.getElementById('cfg-binid').value.trim();
+  const apiKey = document.getElementById('cfg-apikey').value.trim();
+  localStorage.setItem('fa_binid', binId);
+  localStorage.setItem('fa_apikey', apiKey);
+  toast('Cloud credentials saved!', 'success');
+}
+
+async function syncWithCloud(notify=false){
+  const binId = localStorage.getItem('fa_binid');
+  const apiKey = localStorage.getItem('fa_apikey');
+  if(!binId || !apiKey){
+    if(notify) toast('Please configure JSONBin Bin ID and Master Key in Settings first.', 'error');
+    return;
+  }
+  try {
+    // 1. Pull latest from cloud
+    const res = await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest`, {
+      headers: { 'X-Master-Key': apiKey }
+    });
+    if(!res.ok) throw new Error('Failed to fetch from cloud');
+    const data = (await res.json()).record;
+
+    if(data && data.people && data.records){
+      // Merge records and people
+      const cloudPeople = data.people || [];
+      const cloudRecords = data.records || [];
+
+      // Merge people by id
+      const pMap = new Map();
+      people.forEach(p => pMap.set(p.id, p));
+      cloudPeople.forEach(p => pMap.set(p.id, p));
+      people = Array.from(pMap.values());
+
+      // Merge records by id
+      const rMap = new Map();
+      records.forEach(r => rMap.set(r.id, r));
+      cloudRecords.forEach(r => rMap.set(r.id, r));
+      records = Array.from(rMap.values());
+
+      savePeople();
+      saveRecords();
+      buildMatcher();
+      updateSidebarStats();
+      if(document.getElementById('page-dashboard').classList.contains('active')) renderDashboard();
+      if(document.getElementById('page-records').classList.contains('active')) renderRecords();
+      if(document.getElementById('page-people').classList.contains('active')) renderPeople();
+    }
+
+    // 2. Push local merged state to cloud
+    await fetch(`https://api.jsonbin.io/v3/b/${binId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Master-Key': apiKey
+      },
+      body: JSON.stringify({ people, records })
+    });
+
+    if(notify) toast('Cloud sync successful!', 'success');
+  } catch(e){
+    if(notify) toast('Cloud sync error: '+e.message, 'error');
+  }
+}
+
+// Auto sync every 30 seconds if configured
+setInterval(()=>{
+  const binId = localStorage.getItem('fa_binid');
+  const apiKey = localStorage.getItem('fa_apikey');
+  if(binId && apiKey) syncWithCloud(false);
+}, 30000);
+
+// Load cloud config on boot
+window.addEventListener('DOMContentLoaded', ()=>{
+  const b = localStorage.getItem('fa_binid');
+  const k = localStorage.getItem('fa_apikey');
+  if(b) document.getElementById('cfg-binid').value = b;
+  if(k) document.getElementById('cfg-apikey').value = k;
+  syncWithCloud(false);
+});
+
+// Manual Punch In / Punch Out functions
+function manualPunch(type){
+  if(!matcherReady || !people.length){
+    toast('No registered people found. Register someone first.', 'error');
+    return;
+  }
+  // For quick manual demonstration or when face is in front of camera
+  const person = people[0]; // defaults to first registered or prompt
+  const today = todayStr();
+  const nowStr = nowTimeStr();
+  let existing = records.find(r => r.personId === person.id && r.date === today);
+
+  if(type === 'in'){
+    if(existing){
+      toast(`${person.name} has already punched in today.`, 'error');
+      return;
+    }
+    const rec = {
+      id: Date.now()+'',
+      personId: person.id,
+      name: person.name,
+      role: person.role||'',
+      date: today,
+      time: nowStr,
+      punchOut: null,
+      hours: 0,
+      method: 'Manual Button',
+      status: 'In Progress'
+    };
+    records.push(rec);
+    saveRecords();
+    renderMarkedToday();
+    updateSidebarStats();
+    toast(`🟢 Punch-IN recorded for ${person.name}`,'success');
+  } else {
+    if(!existing){
+      toast(`${person.name} has not punched in today yet.`, 'error');
+      return;
+    }
+    if(existing.punchOut){
+      toast(`${person.name} has already punched out today.`, 'error');
+      return;
+    }
+    existing.punchOut = nowStr;
+    const hrs = calculateHours(existing.time, existing.punchOut);
+    existing.hours = parseFloat(hrs.toFixed(2));
+    const st = getAttendanceStatus(existing.hours);
+    existing.status = st.label;
+    saveRecords();
+    renderMarkedToday();
+    updateSidebarStats();
+    toast(`🔴 Punch-OUT recorded for ${person.name} (${existing.hours} hrs - ${existing.status})`,'success');
+  }
+  syncWithCloud(false);
+}
 function getSettings(){
   return {
     fullDayHours: parseFloat(localStorage.getItem('fa_fullday') || '8'),
