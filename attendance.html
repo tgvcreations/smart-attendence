@@ -906,21 +906,33 @@ async function syncWithCloud(notify=false){
     const res = await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest`, {
       headers: { 'X-Master-Key': apiKey }
     });
-    if(!res.ok) throw new Error('Failed to fetch from cloud');
-    const data = (await res.json()).record;
+    if(!res.ok){
+      // If bin is empty or needs initialization, create initial record
+      if(res.status === 404 || res.status === 400){
+        await fetch(`https://api.jsonbin.io/v3/b/${binId}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Master-Key': apiKey
+          },
+          body: JSON.stringify({ people: [], records: [] })
+        });
+        return;
+      }
+      throw new Error('Failed to fetch from cloud (status ' + res.status + ')');
+    }
+    const jsonRes = await res.json();
+    const data = jsonRes.record;
 
-    if(data && data.people && data.records){
-      // Merge records and people
+    if(data && (data.people || data.records)){
       const cloudPeople = data.people || [];
       const cloudRecords = data.records || [];
 
-      // Merge people by id
       const pMap = new Map();
       people.forEach(p => pMap.set(p.id, p));
       cloudPeople.forEach(p => pMap.set(p.id, p));
       people = Array.from(pMap.values());
 
-      // Merge records by id
       const rMap = new Map();
       records.forEach(r => rMap.set(r.id, r));
       cloudRecords.forEach(r => rMap.set(r.id, r));
@@ -930,9 +942,9 @@ async function syncWithCloud(notify=false){
       saveRecords();
       buildMatcher();
       updateSidebarStats();
-      if(document.getElementById('page-dashboard').classList.contains('active')) renderDashboard();
-      if(document.getElementById('page-records').classList.contains('active')) renderRecords();
-      if(document.getElementById('page-people').classList.contains('active')) renderPeople();
+      if(document.getElementById('page-dashboard') && document.getElementById('page-dashboard').classList.contains('active')) renderDashboard();
+      if(document.getElementById('page-records') && document.getElementById('page-records').classList.contains('active')) renderRecords();
+      if(document.getElementById('page-people') && document.getElementById('page-people').classList.contains('active')) renderPeople();
     }
 
     // 2. Push local merged state to cloud
