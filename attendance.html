@@ -963,11 +963,11 @@ async function syncWithCloud(notify=false){
   }
 }
 
-// Auto sync every 30 seconds if configured
+// Auto sync every 30 seconds if configured (silent, no toast spam)
 setInterval(()=>{
   const binId = localStorage.getItem('fa_binid');
   const apiKey = localStorage.getItem('fa_apikey');
-  if(binId && apiKey) syncWithCloud(false);
+  if(binId && apiKey) syncWithCloud(false).catch(()=>{});
 }, 30000);
 
 // Load cloud config on boot
@@ -976,7 +976,7 @@ window.addEventListener('DOMContentLoaded', ()=>{
   const k = localStorage.getItem('fa_apikey');
   if(b) document.getElementById('cfg-binid').value = b;
   if(k) document.getElementById('cfg-apikey').value = k;
-  syncWithCloud(false);
+  if(b && k) syncWithCloud(false).catch(()=>{});
 });
 
 // Manual Punch In / Punch Out functions
