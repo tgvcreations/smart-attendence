@@ -932,7 +932,7 @@ async function resetAllData(){
   buildMatcher();
   updateSidebarStats();
 
-  const binId = localStorage.getItem('fa_binid') || '6af6d9eb99f2e6510825ccad';
+  const binId = localStorage.getItem('fa_binid') || '6af83202ac6210605a86f365';
   const apiKey = localStorage.getItem('fa_apikey') || '$2a$10$uFCGdNpBu0l.B0KUoLjhuONsDbRmXsRCa7UkrAu/N8jVa1OqofWCC';
 
   try {
@@ -962,7 +962,7 @@ setInterval(()=>{
 // Load cloud config on boot
 window.addEventListener('DOMContentLoaded', ()=>{
   // Default pre-configured cloud credentials for seamless syncing
-  if(!localStorage.getItem('fa_binid')) localStorage.setItem('fa_binid', '6af6d9eb99f2e6510825ccad');
+  if(!localStorage.getItem('fa_binid')) localStorage.setItem('fa_binid', '6af83202ac6210605a86f365');
   if(!localStorage.getItem('fa_apikey')) localStorage.setItem('fa_apikey', '$2a$10$uFCGdNpBu0l.B0KUoLjhuONsDbRmXsRCa7UkrAu/N8jVa1OqofWCC');
 
   const b = localStorage.getItem('fa_binid');
@@ -1051,7 +1051,7 @@ function saveSettings(){
 // Load settings into inputs on boot
 window.addEventListener('DOMContentLoaded', ()=>{
   // Default pre-configured cloud credentials for seamless syncing
-  if(!localStorage.getItem('fa_binid')) localStorage.setItem('fa_binid', '6af6d9eb99f2e6510825ccad');
+  if(!localStorage.getItem('fa_binid')) localStorage.setItem('fa_binid', '6af83202ac6210605a86f365');
   if(!localStorage.getItem('fa_apikey')) localStorage.setItem('fa_apikey', '$2a$10$uFCGdNpBu0l.B0KUoLjhuONsDbRmXsRCa7UkrAu/N8jVa1OqofWCC');
 
   const s = getSettings();
