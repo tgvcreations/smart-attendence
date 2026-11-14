@@ -563,6 +563,12 @@ tr:hover td{background:rgba(255,255,255,.03);}
         <div style="font-size:.72rem;color:var(--muted);margin-top:4px;">Hours required to mark as Half Day (below this is Short Hours)</div>
       </div>
       <button class="btn btn-primary" onclick="saveSettings()">Save Settings</button>
+    <div class="card" style="max-width:500px;">
+      <div class="card-title" style="margin-bottom:14px;">Reset Data</div>
+      <div style="font-size:.82rem;color:var(--muted);margin-bottom:12px;">
+        Clear all registered people and attendance records from local storage and cloud database.
+      </div>
+      <button class="btn btn-danger" onclick="resetAllData()">⚠️ Reset All Data</button>
     </div>
   </div>
 
@@ -919,7 +925,36 @@ async function syncWithCloud(notify=false){
   }
 }
 
-// Auto sync every 5 seconds for fast cross-device updates
+async function resetAllData(){
+  if(!confirm('Are you sure you want to reset all registered people and attendance records? This cannot be undone.')) return;
+  people = [];
+  records = [];
+  savePeople();
+  saveRecords();
+  buildMatcher();
+  updateSidebarStats();
+
+  const binId = localStorage.getItem('fa_binid') || '6af6d9eb99f2e6510825ccad';
+  const apiKey = localStorage.getItem('fa_apikey') || '$2a$10$uFCGdNpBu0l.B0KUoLjhuONsDbRmXsRCa7UkrAu/N8jVa1OqofWCC';
+
+  try {
+    await fetch(`https://api.jsonbin.io/v3/b/${binId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Master-Key': apiKey
+      },
+      body: JSON.stringify({ people: [], records: [] })
+    });
+    toast('All data successfully reset across local storage and cloud!', 'success');
+  } catch(e){
+    toast('Local data reset, but cloud reset failed: ' + e.message, 'error');
+  }
+
+  if(document.getElementById('page-dashboard') && document.getElementById('page-dashboard').classList.contains('active')) renderDashboard();
+  if(document.getElementById('page-records') && document.getElementById('page-records').classList.contains('active')) renderRecords();
+  if(document.getElementById('page-people') && document.getElementById('page-people').classList.contains('active')) renderPeople();
+}
 setInterval(()=>{
   const binId = localStorage.getItem('fa_binid');
   const apiKey = localStorage.getItem('fa_apikey');
