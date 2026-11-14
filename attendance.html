@@ -858,9 +858,10 @@ async function syncWithCloud(notify=false){
     return;
   }
   try {
-    // 1. Pull latest from cloud
-    const res = await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest`, {
-      headers: { 'X-Master-Key': apiKey }
+    // 1. Pull latest from cloud with cache busting
+    const res = await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest?_t=` + Date.now(), {
+      headers: { 'X-Master-Key': apiKey },
+      cache: 'no-store'
     });
 
     let data = { people: [], records: [] };
