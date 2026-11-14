@@ -416,8 +416,6 @@ tr:hover td{background:rgba(255,255,255,.03);}
             <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
             Start Camera
           </button>
-          <button class="btn btn-success" id="btn-punch-in" onclick="manualPunch('in')" style="display:none;">🟢 Punch In</button>
-          <button class="btn btn-danger" id="btn-punch-out" onclick="manualPunch('out')" style="display:none;">🔴 Punch Out</button>
           <button class="btn btn-ghost" id="btn-stop-att" onclick="stopCam('att')" disabled>Stop</button>
         </div>
       </div>
@@ -886,8 +884,21 @@ async function syncWithCloud(notify=false){
     }
 
     if(data && (data.people || data.records)){
-      people = data.people || [];
-      records = data.records || [];
+      const cloudPeople = data.people || [];
+      const cloudRecords = data.records || [];
+
+      // Merge people by id (keeping all unique registered faces across devices)
+      const pMap = new Map();
+      people.forEach(p => pMap.set(p.id, p));
+      cloudPeople.forEach(p => pMap.set(p.id, p));
+      people = Array.from(pMap.values());
+
+      // Merge records by id
+      const rMap = new Map();
+      records.forEach(r => rMap.set(r.id, r));
+      cloudRecords.forEach(r => rMap.set(r.id, r));
+      records = Array.from(rMap.values());
+
       savePeople();
       saveRecords();
       buildMatcher();
