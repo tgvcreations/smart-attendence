@@ -584,8 +584,8 @@ let people = DB.load('people', []);    // [{id, name, role, empId, descriptor:[.
 let records = DB.load('records', []);  // [{id, personId, name, role, date, time, method}]
 let labeledDescriptors = [];
 
-function savePeople(){ DB.save('people', people); syncWithCloud(false).catch(()=>{}); }
-function saveRecords(){ DB.save('records', records); syncWithCloud(false).catch(()=>{}); }
+function savePeople(){ DB.save('people', people); }
+function saveRecords(){ DB.save('records', records); }
 
 // ═══════════════════════════════════════
 //  FACE-API INIT
@@ -1053,7 +1053,8 @@ function getAttendanceStatus(hours){
 // ═══════════════════════════════════════
 const recentlyMarked = new Set(); // per session cooldown
 
-function markAttendance(personId, person){
+async function markAttendance(personId, person){
+  await syncWithCloud(false);
   const today = todayStr();
   const nowStr = nowTimeStr();
   if(recentlyMarked.has(personId)) return;
@@ -1079,6 +1080,7 @@ function markAttendance(personId, person){
     };
     records.push(rec);
     saveRecords();
+    await syncWithCloud(false);
     renderMarkedToday();
     updateSidebarStats();
     toast(`🟢 Punch-IN recorded for ${rec.name} at ${nowStr}`,'success');
@@ -1090,6 +1092,7 @@ function markAttendance(personId, person){
     const st = getAttendanceStatus(existing.hours);
     existing.status = st.label;
     saveRecords();
+    await syncWithCloud(false);
     renderMarkedToday();
     updateSidebarStats();
     toast(`🔴 Punch-OUT recorded for ${existing.name} (${existing.hours} hrs - ${existing.status})`,'success');
@@ -1180,6 +1183,7 @@ async function captureAndRegister(){
     };
     people.push(person);
     savePeople();
+    await syncWithCloud(false);
     buildMatcher();
     updateSidebarStats();
     renderRecentlyRegistered();
