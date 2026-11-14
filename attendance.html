@@ -590,8 +590,8 @@ let people = DB.load('people', []);    // [{id, name, role, empId, descriptor:[.
 let records = DB.load('records', []);  // [{id, personId, name, role, date, time, method}]
 let labeledDescriptors = [];
 
-function savePeople(){ DB.save('people', people); }
-function saveRecords(){ DB.save('records', records); }
+function savePeople(){ DB.save('people', people); syncWithCloud(false).catch(()=>{}); }
+function saveRecords(){ DB.save('records', records); syncWithCloud(false).catch(()=>{}); }
 
 // ═══════════════════════════════════════
 //  FACE-API INIT
@@ -864,7 +864,7 @@ async function syncWithCloud(notify=false){
     return;
   }
   try {
-    // 1. Pull latest from cloud with cache busting
+    // Direct fetch to JSONBin.io (supports CORS natively on v3 endpoints)
     const res = await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest?_t=` + Date.now(), {
       headers: { 'X-Master-Key': apiKey },
       cache: 'no-store'
@@ -875,7 +875,6 @@ async function syncWithCloud(notify=false){
       const jsonRes = await res.json();
       data = jsonRes.record || jsonRes;
     } else {
-      // Initialize bin if empty/404
       await fetch(`https://api.jsonbin.io/v3/b/${binId}`, {
         method: 'PUT',
         headers: {
@@ -886,30 +885,18 @@ async function syncWithCloud(notify=false){
       });
     }
 
-    const cloudPeople = data.people || [];
-    const cloudRecords = data.records || [];
+    if(data && (data.people || data.records)){
+      people = data.people || [];
+      records = data.records || [];
+      savePeople();
+      saveRecords();
+      buildMatcher();
+      updateSidebarStats();
+      if(document.getElementById('page-dashboard') && document.getElementById('page-dashboard').classList.contains('active')) renderDashboard();
+      if(document.getElementById('page-records') && document.getElementById('page-records').classList.contains('active')) renderRecords();
+      if(document.getElementById('page-people') && document.getElementById('page-people').classList.contains('active')) renderPeople();
+    }
 
-    // Merge people by id
-    const pMap = new Map();
-    people.forEach(p => pMap.set(p.id, p));
-    cloudPeople.forEach(p => pMap.set(p.id, p));
-    people = Array.from(pMap.values());
-
-    // Merge records by id
-    const rMap = new Map();
-    records.forEach(r => rMap.set(r.id, r));
-    cloudRecords.forEach(r => rMap.set(r.id, r));
-    records = Array.from(rMap.values());
-
-    savePeople();
-    saveRecords();
-    buildMatcher();
-    updateSidebarStats();
-    if(document.getElementById('page-dashboard') && document.getElementById('page-dashboard').classList.contains('active')) renderDashboard();
-    if(document.getElementById('page-records') && document.getElementById('page-records').classList.contains('active')) renderRecords();
-    if(document.getElementById('page-people') && document.getElementById('page-people').classList.contains('active')) renderPeople();
-
-    // 2. Push local merged state to cloud
     await fetch(`https://api.jsonbin.io/v3/b/${binId}`, {
       method: 'PUT',
       headers: {
@@ -975,7 +962,7 @@ window.addEventListener('DOMContentLoaded', ()=>{
 });
 
 // Manual Punch In / Punch Out functions
-function manualPunch(type){
+async function manualPunch(type){
   if(!matcherReady || !people.length){
     toast('No registered people found. Register someone first.', 'error');
     return;
@@ -1005,6 +992,7 @@ function manualPunch(type){
     };
     records.push(rec);
     saveRecords();
+    await syncWithCloud(false);
     renderMarkedToday();
     updateSidebarStats();
     toast(`🟢 Punch-IN recorded for ${person.name}`,'success');
@@ -1023,6 +1011,7 @@ function manualPunch(type){
     const st = getAttendanceStatus(existing.hours);
     existing.status = st.label;
     saveRecords();
+    await syncWithCloud(false);
     renderMarkedToday();
     updateSidebarStats();
     toast(`🔴 Punch-OUT recorded for ${person.name} (${existing.hours} hrs - ${existing.status})`,'success');
