@@ -270,31 +270,7 @@ tr:hover td{background:rgba(255,255,255,.03);}
   <button onclick="document.getElementById('http-banner').style.display='none'" style="background:rgba(0,0,0,.25);border:none;color:#fff;padding:3px 10px;border-radius:6px;cursor:pointer;">✕</button>
 </div>
 
-<!-- Server Instructions Modal -->
-<div id="server-modal" style="display:none;position:fixed;inset:0;z-index:99998;background:rgba(0,0,0,.75);align-items:center;justify-content:center;">
-  <div style="background:#1a1a24;border:1px solid #2e2e3e;border-radius:16px;padding:28px;max-width:500px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,.6);">
-    <h3 style="margin-bottom:6px;font-size:1.1rem;">📷 Enable Camera Access</h3>
-    <p style="color:#8888aa;font-size:.82rem;margin-bottom:18px;">Browsers block camera on <code>file://</code>. Run a local server instead — pick any option:</p>
-    <div style="background:#0f0f13;border-radius:10px;padding:14px;margin-bottom:12px;">
-      <div style="font-size:.75rem;color:#6c63ff;font-weight:700;margin-bottom:6px;">OPTION 1 — Python (easiest)</div>
-      <code style="font-size:.82rem;color:#48cfad;display:block;">python -m http.server 8080</code>
-      <div style="font-size:.72rem;color:#8888aa;margin-top:4px;">Then open: <strong>http://localhost:8080/attendance.html</strong></div>
-    </div>
-    <div style="background:#0f0f13;border-radius:10px;padding:14px;margin-bottom:12px;">
-      <div style="font-size:.75rem;color:#6c63ff;font-weight:700;margin-bottom:6px;">OPTION 2 — Node.js / npx</div>
-      <code style="font-size:.82rem;color:#48cfad;display:block;">npx serve .</code>
-      <div style="font-size:.72rem;color:#8888aa;margin-top:4px;">Then open the URL it shows.</div>
-    </div>
-    <div style="background:#0f0f13;border-radius:10px;padding:14px;margin-bottom:18px;">
-      <div style="font-size:.75rem;color:#6c63ff;font-weight:700;margin-bottom:6px;">OPTION 3 — VS Code</div>
-      <div style="font-size:.82rem;color:#f0f0f8;">Install the <strong>Live Server</strong> extension → right-click <code>attendance.html</code> → <em>Open with Live Server</em></div>
-    </div>
-    <div style="background:#0f3460;border-radius:10px;padding:12px;margin-bottom:18px;font-size:.8rem;color:#a8dadc;">
-      💡 <strong>Tip:</strong> Double-click <code>start-server.bat</code> in the same folder — it opens everything automatically!
-    </div>
-    <button onclick="document.getElementById('server-modal').style.display='none'" style="width:100%;padding:11px;background:linear-gradient(135deg,#6c63ff,#48cfad);border:none;border-radius:10px;color:#fff;font-weight:700;cursor:pointer;font-size:.95rem;">Got it</button>
-  </div>
-</div>
+<!-- Server Instructions Modal removed -->
 
 <!-- Loader -->
 <div id="loader">
@@ -359,7 +335,6 @@ tr:hover td{background:rgba(255,255,255,.03);}
   </div>
   <div class="topbar-right">
     <div id="model-status"><span class="dot" id="model-dot"></span><span id="model-text">Loading AI…</span></div>
-    <button onclick="document.getElementById('server-modal').style.display='flex'" style="background:rgba(108,99,255,.2);border:1px solid rgba(108,99,255,.4);color:#a8a4ff;font-size:.75rem;padding:5px 12px;border-radius:8px;cursor:pointer;">📷 Camera Help</button>
     <span class="badge" id="date-badge"></span>
   </div>
 </header>
@@ -589,25 +564,6 @@ tr:hover td{background:rgba(255,255,255,.03);}
       </div>
       <button class="btn btn-primary" onclick="saveSettings()">Save Settings</button>
     </div>
-
-    <div class="card" style="max-width:500px;">
-      <div class="card-title" style="margin-bottom:14px;">🌐 Cloud Sync (Cross-Device)</div>
-      <div style="font-size:.82rem;color:var(--muted);margin-bottom:12px;">
-        To sync registrations and attendance across multiple devices, enter your free <a href="https://jsonbin.io" target="_blank" style="color:var(--accent);">JSONBin.io</a> Bin ID and Master Key.
-      </div>
-      <div class="form-group">
-        <label>JSONBin Bin ID</label>
-        <input type="text" id="cfg-binid" placeholder="e.g. 648f..."/>
-      </div>
-      <div class="form-group">
-        <label>JSONBin Master Key ($2a$...)</label>
-        <input type="text" id="cfg-apikey" placeholder="e.g. $2a$10$..."/>
-      </div>
-      <div style="display:flex;gap:10px;margin-top:14px;">
-        <button class="btn btn-success" onclick="syncWithCloud(true)">☁️ Sync Now</button>
-        <button class="btn btn-ghost" onclick="saveCloudConfig()">Save Credentials</button>
-      </div>
-    </div>
   </div>
 
 </main>
@@ -628,8 +584,8 @@ let people = DB.load('people', []);    // [{id, name, role, empId, descriptor:[.
 let records = DB.load('records', []);  // [{id, personId, name, role, date, time, method}]
 let labeledDescriptors = [];
 
-function savePeople(){ DB.save('people', people); }
-function saveRecords(){ DB.save('records', records); }
+function savePeople(){ DB.save('people', people); syncWithCloud(false).catch(()=>{}); }
+function saveRecords(){ DB.save('records', records); syncWithCloud(false).catch(()=>{}); }
 
 // ═══════════════════════════════════════
 //  FACE-API INIT
@@ -971,10 +927,14 @@ setInterval(()=>{
 
 // Load cloud config on boot
 window.addEventListener('DOMContentLoaded', ()=>{
+  // Default pre-configured cloud credentials for seamless syncing
+  if(!localStorage.getItem('fa_binid')) localStorage.setItem('fa_binid', '6af6d9eb99f2e6510825ccad');
+  if(!localStorage.getItem('fa_apikey')) localStorage.setItem('fa_apikey', '$2a$10$uFCGdNpBu0l.B0KUoLjhuONsDbRmXsRCa7UkrAu/N8jVa1OqofWCC');
+
   const b = localStorage.getItem('fa_binid');
   const k = localStorage.getItem('fa_apikey');
-  if(b) document.getElementById('cfg-binid').value = b;
-  if(k) document.getElementById('cfg-apikey').value = k;
+  if(b && document.getElementById('cfg-binid')) document.getElementById('cfg-binid').value = b;
+  if(k && document.getElementById('cfg-apikey')) document.getElementById('cfg-apikey').value = k;
   if(b && k) syncWithCloud(false).catch(()=>{});
 });
 
@@ -1054,11 +1014,18 @@ function saveSettings(){
 
 // Load settings into inputs on boot
 window.addEventListener('DOMContentLoaded', ()=>{
+  // Default pre-configured cloud credentials for seamless syncing
+  if(!localStorage.getItem('fa_binid')) localStorage.setItem('fa_binid', '6af6d9eb99f2e6510825ccad');
+  if(!localStorage.getItem('fa_apikey')) localStorage.setItem('fa_apikey', '$2a$10$uFCGdNpBu0l.B0KUoLjhuONsDbRmXsRCa7UkrAu/N8jVa1OqofWCC');
+
   const s = getSettings();
   const fEl = document.getElementById('cfg-fullday');
   const hEl = document.getElementById('cfg-halfday');
   if(fEl) fEl.value = s.fullDayHours;
   if(hEl) hEl.value = s.halfDayHours;
+
+  // Initial sync on boot
+  syncWithCloud(false).catch(()=>{});
 });
 
 // Calculate hours between two time strings (HH:MM:SS AM/PM or similar) and return decimal hours
