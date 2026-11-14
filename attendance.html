@@ -919,12 +919,12 @@ async function syncWithCloud(notify=false){
   }
 }
 
-// Auto sync every 30 seconds if configured (silent, no toast spam)
+// Auto sync every 5 seconds for fast cross-device updates
 setInterval(()=>{
   const binId = localStorage.getItem('fa_binid');
   const apiKey = localStorage.getItem('fa_apikey');
   if(binId && apiKey) syncWithCloud(false).catch(()=>{});
-}, 30000);
+}, 5000);
 
 // Load cloud config on boot
 window.addEventListener('DOMContentLoaded', ()=>{
