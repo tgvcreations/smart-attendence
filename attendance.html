@@ -564,23 +564,18 @@ tr:hover td{background:rgba(255,255,255,.03);}
       </div>
       <button class="btn btn-primary" onclick="saveSettings()">Save Settings</button>
     </div>
-    <div class="card" style="max-width:500px;margin-bottom:20px;">
-      <div class="card-title">Optional Cloud Sync</div>
-      <div class="form-group"><label for="cfg-binid">JSONBin Bin ID</label><input id="cfg-binid" autocomplete="off"/></div>
-      <div class="form-group"><label for="cfg-apikey">JSONBin API Key</label><input id="cfg-apikey" type="password" autocomplete="off"/></div>
-      <button class="btn btn-primary" onclick="saveCloudConfig()">Save Cloud Settings</button>
-      <button class="btn btn-ghost" onclick="syncWithCloud(true)">Sync Now</button>
+    <div class="card" style="max-width:700px;margin-bottom:20px;">
+      <div class="card-title">Shared Database</div>
+      <p id="cloud-status">Connecting to Supabase…</p>
+      <button class="btn btn-ghost" onclick="syncWithCloud(true)">Refresh</button>
+      <button class="btn btn-ghost" onclick="cloudSignOut()">Sign Out</button>
     </div>
-    <div class="card" style="max-width:500px;">
-      <div class="card-title" style="margin-bottom:14px;">Reset Data</div>
-      <div style="font-size:.82rem;color:var(--muted);margin-bottom:12px;">
-        Clear all registered people and attendance records from local storage and cloud database.
-      </div>
-      <button class="btn btn-danger" onclick="resetAllData()">⚠️ Reset All Data</button>
+    <div class="card" id="admin-members" style="display:none">
+      <div class="card-title">User Approvals</div>
+      <div id="members-list"></div>
     </div>
   </div>
 
-  </div>
 </main>
 
 <!-- Toast container -->
@@ -595,12 +590,12 @@ const DB = {
   load(key, def){ try{ const v=localStorage.getItem('fa_'+key); return v?JSON.parse(v):def; }catch(e){ return def; } }
 };
 
-let people = DB.load('people', []);    // [{id, name, role, empId, descriptor:[...], createdAt}]
-let records = DB.load('records', []);  // [{id, personId, name, role, date, time, method}]
+let people = [];    // [{id, name, role, empId, descriptor:[...], createdAt}]
+let records = [];  // [{id, personId, name, role, date, time, method}]
 let labeledDescriptors = [];
 
-function savePeople(){ DB.save('people', people); }
-function saveRecords(){ DB.save('records', records); }
+function savePeople(){}
+function saveRecords(){}
 
 // ═══════════════════════════════════════
 //  FACE-API INIT
@@ -864,125 +859,6 @@ function stopCam(which){
   }
 }
 
-function saveCloudConfig(){
-  const binId = document.getElementById('cfg-binid').value.trim();
-  const apiKey = document.getElementById('cfg-apikey').value.trim();
-  localStorage.setItem('fa_binid', binId);
-  localStorage.setItem('fa_apikey', apiKey);
-  toast('Cloud credentials saved!', 'success');
-}
-
-async function syncWithCloud(notify=false){
-  const binId = localStorage.getItem('fa_binid');
-  const apiKey = localStorage.getItem('fa_apikey');
-  if(!binId || !apiKey){
-    if(notify) toast('Please configure JSONBin Bin ID and Master Key in Settings first.', 'error');
-    return;
-  }
-  if(syncInProgress) return;
-  syncInProgress = true;
-  try {
-    // Direct fetch to JSONBin.io (supports CORS natively on v3 endpoints)
-    const res = await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest?_t=` + Date.now(), {
-      headers: { 'X-Master-Key': apiKey },
-      cache: 'no-store'
-    });
-
-    let data = { people: [], records: [] };
-    if(res.ok){
-      const jsonRes = await res.json();
-      data = jsonRes.record || jsonRes;
-    } else { throw new Error('Cloud read failed (HTTP '+res.status+'). Local data was preserved.'); }
-
-    if(data && (data.people || data.records)){
-      const cloudPeople = data.people || [];
-      const cloudRecords = data.records || [];
-
-      // Merge people by id (keeping all unique registered faces across devices)
-      const pMap = new Map();
-      people.forEach(p => pMap.set(p.id, p));
-      cloudPeople.forEach(p => pMap.set(p.id, p));
-      people = Array.from(pMap.values());
-
-      // Merge records by id
-      const rMap = new Map();
-      records.forEach(r => rMap.set(r.id, r));
-      cloudRecords.forEach(r => { if(!rMap.has(r.id)) rMap.set(r.id, r); });
-      records = Array.from(rMap.values());
-
-      savePeople();
-      saveRecords();
-      buildMatcher();
-      updateSidebarStats();
-      if(document.getElementById('page-dashboard') && document.getElementById('page-dashboard').classList.contains('active')) renderDashboard();
-      if(document.getElementById('page-records') && document.getElementById('page-records').classList.contains('active')) renderRecords();
-      if(document.getElementById('page-people') && document.getElementById('page-people').classList.contains('active')) renderPeople();
-    }
-
-    const writeRes = await fetch(`https://api.jsonbin.io/v3/b/${binId}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Master-Key': apiKey
-      },
-      body: JSON.stringify({ people, records })
-    });
-
-    if(!writeRes.ok) throw new Error('Cloud write failed (HTTP '+writeRes.status+')');
-    if(notify) toast('Cloud sync successful!', 'success');
-  } catch(e){
-    if(notify) toast('Cloud sync error: '+e.message, 'error');
-  } finally { syncInProgress = false; }
-}
-
-async function resetAllData(){
-  if(!confirm('Are you sure you want to reset all registered people and attendance records? This cannot be undone.')) return;
-  people = [];
-  records = [];
-  savePeople();
-  saveRecords();
-  buildMatcher();
-  updateSidebarStats();
-
-  const binId = localStorage.getItem('fa_binid');
-  const apiKey = localStorage.getItem('fa_apikey');
-
-  try {
-    if(!binId || !apiKey) throw new Error('Cloud is not configured');
-    const writeRes = await fetch(`https://api.jsonbin.io/v3/b/${binId}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Master-Key': apiKey
-      },
-      body: JSON.stringify({ people: [], records: [] })
-    });
-    if(!writeRes.ok) throw new Error('HTTP '+writeRes.status);
-    toast('All data successfully reset across local storage and cloud!', 'success');
-  } catch(e){
-    toast('Local data reset, but cloud reset failed: ' + e.message, 'error');
-  }
-
-  if(document.getElementById('page-dashboard') && document.getElementById('page-dashboard').classList.contains('active')) renderDashboard();
-  if(document.getElementById('page-records') && document.getElementById('page-records').classList.contains('active')) renderRecords();
-  if(document.getElementById('page-people') && document.getElementById('page-people').classList.contains('active')) renderPeople();
-}
-setInterval(()=>{
-  const binId = localStorage.getItem('fa_binid');
-  const apiKey = localStorage.getItem('fa_apikey');
-  if(binId && apiKey) syncWithCloud(false).catch(()=>{});
-}, 5000);
-
-// Load cloud config on boot
-window.addEventListener('DOMContentLoaded', ()=>{
-
-  const b = localStorage.getItem('fa_binid');
-  const k = localStorage.getItem('fa_apikey');
-  if(b && document.getElementById('cfg-binid')) document.getElementById('cfg-binid').value = b;
-  if(k && document.getElementById('cfg-apikey')) document.getElementById('cfg-apikey').value = k;
-  if(b && k) syncWithCloud(false).catch(()=>{});
-});
-
 // Manual Punch In / Punch Out functions
 async function manualPunch(type){
   if(!matcherReady || !people.length){
@@ -1059,17 +935,10 @@ function saveSettings(){
   toast('Settings saved successfully!', 'success');
 }
 
-// Load settings into inputs on boot
-window.addEventListener('DOMContentLoaded', ()=>{
-
-  const s = getSettings();
-  const fEl = document.getElementById('cfg-fullday');
-  const hEl = document.getElementById('cfg-halfday');
-  if(fEl) fEl.value = s.fullDayHours;
-  if(hEl) hEl.value = s.halfDayHours;
-
-  // Initial sync on boot
-  syncWithCloud(false).catch(()=>{});
+window.addEventListener('DOMContentLoaded',()=>{
+ const settings=getSettings();
+ document.getElementById('cfg-fullday').value=settings.fullDayHours;
+ document.getElementById('cfg-halfday').value=settings.halfDayHours;
 });
 
 // Calculate hours between two time strings (HH:MM:SS AM/PM or similar) and return decimal hours
@@ -1409,5 +1278,20 @@ loadModels().catch(e=>{
   setTimeout(()=>document.getElementById('loader').style.display='none',3000);
 });
 </script>
+<div id="account-gate" style="position:fixed;inset:0;z-index:2000;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:20px;overflow:auto">
+  <div class="card" style="width:100%;max-width:440px">
+    <h2>FaceAttend account</h2>
+    <p style="margin:12px 0;color:var(--muted)">Sign in on any device to use your shared face registration. New accounts require administrator approval.</p>
+    <form onsubmit="cloudSignIn(event)">
+      <div class="form-group"><label for="account-email">Email</label><input id="account-email" type="email" autocomplete="email" required/></div>
+      <div class="form-group"><label for="account-password">Password</label><input id="account-password" type="password" autocomplete="current-password" minlength="8" required/></div>
+      <button class="btn btn-primary" type="submit">Sign In</button>
+      <button class="btn btn-ghost" type="button" onclick="cloudSignUp()">Create Account</button>
+    </form>
+    <p id="account-message" role="status" style="margin-top:14px;overflow-wrap:anywhere"></p>
+    <button class="btn btn-ghost" type="button" onclick="cloudSignOut()">Use Another Account</button>
+  </div>
+</div>
+<script src="./cloud.js"></script>
 </body>
 </html>
