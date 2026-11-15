@@ -34,10 +34,10 @@ git push
 ```
 
 
-## Free camera challenge
+## Free raise-hand challenge
 
-Attendance now requires an eye-blink-only sequence: eyes open, both eyes closed briefly, then eyes reopened. Mouth position is ignored. Blink slowly so the camera can detect each state. The challenge is tied to one recognized person, expires quickly, and resets on camera stop, hidden tab, multiple/unknown/missing faces, stale frames, or identity change. Both punch buttons use the same gate.
+Keep your hands lowered until prompted, then raise either hand beside your face with the palm toward the camera. No eye-blink or mouth movement is required. The challenge expires, is tied to the recognized person, and is required for both punch actions. The free MediaPipe Hands model is loaded from a pinned CDN version. If detection fails, attendance stays blocked.
 
-This is a browser-side still-photo deterrent, not certified or server-verified liveness. Recorded video, generated video, modified JavaScript, or direct authenticated API requests can bypass it. Do not treat it as proof of physical presence for high-assurance attendance. Camera/glasses/lighting/device testing remains required. No new external service or fee is introduced.
+This is a browser-side movement check, not verified face liveness. Someone can hold up a face photo and raise a real hand beside it. Videos, modified browsers, and direct authenticated API requests can also bypass the intended check. Do not use it as proof of physical presence. Real phone-camera testing is still required.
 
 Publish attendance.html, cloud.js, and liveness.js together.

@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>FaceAttend — Smart Attendance System</title>
 <script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.5/dist/face-api.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240/hands.js" crossorigin="anonymous"></script>
 <style>
 body:not(.attendance-admin) .admin-only{display:none!important;}
 :root{
@@ -393,7 +394,7 @@ tr:hover td{background:rgba(255,255,255,.03);}
   <!-- MARK ATTENDANCE -->
   <div class="page" id="page-attendance">
     <div class="section-header">
-      <div><h2>Mark Attendance</h2><p>Any approved account can mark attendance for a registered face. Complete the eye-blink challenge to punch in; repeat it before Punch Out.</p></div>
+      <div><h2>Mark Attendance</h2><p>Any approved account can mark attendance for a registered face. Complete the raise-hand challenge to punch in; repeat it before Punch Out.</p></div>
     </div>
     <div class="alert alert-warn">
       <span>⚠️</span>
@@ -426,7 +427,7 @@ tr:hover td{background:rgba(255,255,255,.03);}
       <div style="flex:1;min-width:220px;">
         <div class="card" style="margin-bottom:16px;">
           <div class="card-title">Recognition Status</div>
-          <div id="liveness-status" role="status" aria-live="polite" style="margin-top:12px;color:var(--warn);font-weight:600;">Complete the eye-blink challenge before marking attendance.</div>
+          <div id="liveness-status" role="status" aria-live="polite" style="margin-top:12px;color:var(--warn);font-weight:600;">Complete the raise-hand challenge before marking attendance.</div>
           <div id="rec-status" style="margin-top:12px;color:var(--muted);font-size:.88rem;">Camera not started</div>
           <div class="progress-bar" style="margin-top:10px;"><div class="progress-fill" id="conf-bar" style="width:0%"></div></div>
           <div style="font-size:.72rem;color:var(--muted);margin-top:4px;">Confidence: <span id="conf-val">—</span></div>
@@ -584,7 +585,7 @@ tr:hover td{background:rgba(255,255,255,.03);}
 <!-- Toast container -->
 <div id="toast-container"></div>
 
-<script src="./liveness.js?v=6baa59672bfe"></script>
+<script src="./liveness.js?v=579d137a4fac"></script>
 <script>
 // ═══════════════════════════════════════
 //  DATA LAYER
@@ -834,7 +835,18 @@ async function runAttendanceLoop(){
         });
 
         recognizedPersonId = person ? person.id : null;
-        const challengePassed=person&&attendanceChallenge.observe(person.id,best.landmarks);
+        let handObservation;
+        try{
+          document.getElementById('liveness-status').textContent=handTracker?'Checking your hand…':'Loading hand detection…';
+          handObservation=await detectRaisedHand(vid,best.detection.box);
+        }catch(e){
+          if(!attRunning||cameraGeneration!==attCameraGeneration)return;
+          recognizedPersonId=null;resetCameraChallenge(handTrackerFailure||'Hand detection failed. Reload the page.');
+          attTimer=setTimeout(()=>requestAnimationFrame(runAttendanceLoop),1000);return;
+        }
+        if(!attRunning||cameraGeneration!==attCameraGeneration)return;
+        if(document.hidden){recognizedPersonId=null;resetCameraChallenge();attTimer=setTimeout(()=>requestAnimationFrame(runAttendanceLoop),200);return;}
+        const challengePassed=person&&attendanceChallenge.observe(person.id,handObservation);
         renderCameraChallenge();
         if(challengePassed&&person) await markAttendance(match.label, person);
       } else {
