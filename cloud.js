@@ -108,7 +108,11 @@ async function manualPunch(direction){
  await punchCloud(direction,person);
 }
 async function punchCloud(direction,person){
- if(punching||!cloudMember?.approved)return;punching=true;
+ if(punching||!cloudMember?.approved)return;
+ if(!attRunning||recognizedPersonId!==person?.id||document.hidden||!attendanceChallenge.consume(person.id)){
+  toast('Complete the camera challenge for this person first.','error');renderCameraChallenge();return;
+ }
+ renderCameraChallenge();punching=true;
  try{await cloudRequest('rpc/attendance_punch',{method:'POST',body:JSON.stringify({p_direction:direction,p_person_id:person.id})});stationPunches.add(todayStr()+':'+person.id);await syncWithCloud();toast((direction==='in'?'Punch-in':'Punch-out')+' saved for '+person.name,'success');}catch(e){toast(e.message,'error');}finally{punching=false;}
 }
 async function captureAndRegister(){

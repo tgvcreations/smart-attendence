@@ -393,7 +393,7 @@ tr:hover td{background:rgba(255,255,255,.03);}
   <!-- MARK ATTENDANCE -->
   <div class="page" id="page-attendance">
     <div class="section-header">
-      <div><h2>Mark Attendance</h2><p>Any approved account can mark attendance for a registered face. Recognition punches in; use Punch Out to finish.</p></div>
+      <div><h2>Mark Attendance</h2><p>Any approved account can mark attendance for a registered face. Complete the camera challenge to punch in; repeat it before Punch Out.</p></div>
     </div>
     <div class="alert alert-warn">
       <span>⚠️</span>
@@ -426,6 +426,7 @@ tr:hover td{background:rgba(255,255,255,.03);}
       <div style="flex:1;min-width:220px;">
         <div class="card" style="margin-bottom:16px;">
           <div class="card-title">Recognition Status</div>
+          <div id="liveness-status" role="status" aria-live="polite" style="margin-top:12px;color:var(--warn);font-weight:600;">Complete the camera challenge before marking attendance.</div>
           <div id="rec-status" style="margin-top:12px;color:var(--muted);font-size:.88rem;">Camera not started</div>
           <div class="progress-bar" style="margin-top:10px;"><div class="progress-fill" id="conf-bar" style="width:0%"></div></div>
           <div style="font-size:.72rem;color:var(--muted);margin-top:4px;">Confidence: <span id="conf-val">—</span></div>
@@ -583,6 +584,7 @@ tr:hover td{background:rgba(255,255,255,.03);}
 <!-- Toast container -->
 <div id="toast-container"></div>
 
+<script src="./liveness.js?v=f4cdf8678c5f"></script>
 <script>
 // ═══════════════════════════════════════
 //  DATA LAYER
@@ -607,6 +609,8 @@ let modelsLoaded = false;
 let attStream = null, regStream = null;
 let attRunning = false, regRunning = false;
 let attTimer = null;
+let attCameraGeneration=0;
+let lastChallengeVideoTime=-1;
 let matcherReady = false;
 let faceMatcher = null;
 let recognizedPersonId = null;
@@ -765,6 +769,8 @@ async function startAttendanceCam(){
     document.getElementById('btn-stop-att').disabled = false;
     document.getElementById('scan-line').style.display = 'block';
     attRunning = true;
+    attCameraGeneration++;lastChallengeVideoTime=-1;
+    resetCameraChallenge();
     runAttendanceLoop();
     document.getElementById('rec-status').textContent = 'Scanning for faces…';
     toast('Camera started. Looking for faces…','info');
@@ -775,15 +781,27 @@ async function startAttendanceCam(){
 
 async function runAttendanceLoop(){
   if(!attRunning) return;
+  const cameraGeneration=attCameraGeneration;
   const vid = document.getElementById('cam-video');
   const canvas = document.getElementById('cam-canvas');
   if(vid.readyState >= 2){
-    const dets = await faceapi
+    let dets;
+    try{dets = await faceapi
       .detectAllFaces(vid, new faceapi.SsdMobilenetv1Options({minConfidence:0.5}))
       .withFaceLandmarks()
       .withFaceDescriptors();
-
-    if(!attRunning) return;
+    }catch(e){
+      if(!attRunning||cameraGeneration!==attCameraGeneration)return;
+      recognizedPersonId=null;resetCameraChallenge('Camera analysis failed. Stop and restart the camera.');
+      document.getElementById('rec-status').textContent='Face analysis failed';
+      attTimer=setTimeout(()=>requestAnimationFrame(runAttendanceLoop),1000);return;
+    }
+    if(!attRunning||cameraGeneration!==attCameraGeneration) return;
+    if(document.hidden||vid.currentTime===lastChallengeVideoTime){
+      recognizedPersonId=null;resetCameraChallenge('Waiting for live camera frames…');
+      attTimer=setTimeout(()=>requestAnimationFrame(runAttendanceLoop),200);return;
+    }
+    lastChallengeVideoTime=vid.currentTime;
     const dims = {width: vid.videoWidth, height: vid.videoHeight};
     canvas.width = dims.width;
     canvas.height = dims.height;
@@ -792,7 +810,7 @@ async function runAttendanceLoop(){
     const ctx = canvas.getContext('2d');
     ctx.clearRect(0,0,canvas.width,canvas.height);
 
-    if(dets.length && matcherReady){
+    if(dets.length===1 && matcherReady){
       const best = dets.reduce((a,b) => b.detection.score > a.detection.score ? b : a);
       const match = faceMatcher.findBestMatch(best.descriptor);
       const conf = Math.round((1 - match.distance)*100);
@@ -816,9 +834,12 @@ async function runAttendanceLoop(){
         });
 
         recognizedPersonId = person ? person.id : null;
-        if(person) await markAttendance(match.label, person);
+        const challengePassed=person&&attendanceChallenge.observe(person.id,best.landmarks);
+        renderCameraChallenge();
+        if(challengePassed&&person) await markAttendance(match.label, person);
       } else {
         recognizedPersonId = null;
+        resetCameraChallenge('Show a registered face to begin.');
         document.getElementById('rec-status').innerHTML = `<span style="color:var(--warn);">⚠ Unknown face detected</span>`;
         document.getElementById('cam-name-tag').style.display='none';
         resized.forEach(det=>{
@@ -829,17 +850,24 @@ async function runAttendanceLoop(){
       }
     } else if(dets.length===0){
       recognizedPersonId = null;
+      resetCameraChallenge('No face detected. Face the camera to restart.');
       document.getElementById('rec-status').textContent = 'No face detected. Move closer.';
       document.getElementById('cam-name-tag').style.display='none';
       document.getElementById('conf-bar').style.width='0%';
       document.getElementById('conf-val').textContent='—';
+    }else{
+      recognizedPersonId=null;resetCameraChallenge('Only one registered face may be in the camera.');
+      document.getElementById('rec-status').textContent='Keep one person in frame';
+      document.getElementById('cam-name-tag').style.display='none';
     }
-  }
-  attTimer = setTimeout(()=>requestAnimationFrame(runAttendanceLoop), 800);
+  }else{recognizedPersonId=null;resetCameraChallenge('Waiting for camera…');}
+  if(attRunning&&cameraGeneration===attCameraGeneration)attTimer = setTimeout(()=>requestAnimationFrame(runAttendanceLoop), 150);
 }
 
 function stopCam(which){
   if(which==='att'){
+    attCameraGeneration++;lastChallengeVideoTime=-1;
+    resetCameraChallenge('Camera stopped. Start it to begin a new challenge.');
     if(attStream) attStream.getTracks().forEach(t=>t.stop());
     clearTimeout(attTimer);
     attStream=null; attRunning=false; recognizedPersonId=null;
@@ -1296,6 +1324,6 @@ loadModels().catch(e=>{
     <button class="btn btn-ghost" type="button" onclick="cloudSignOut()">Use Another Account</button>
   </div>
 </div>
-<script src="./cloud.js?v=17fb0b1bee65"></script>
+<script src="./cloud.js?v=dafbf602939a"></script>
 </body>
 </html>

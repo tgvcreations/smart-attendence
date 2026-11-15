@@ -32,3 +32,12 @@ git add attendance.html cloud.js README.md
 git commit -m "Connect attendance to Supabase with shared accounts"
 git push
 ```
+
+
+## Free camera challenge
+
+Attendance now requires neutral face calibration and two expression changes (close/reopen eyes and open/close mouth) in randomized order. Each state must be held briefly. The challenge is tied to one recognized person, expires quickly, and resets on camera stop, hidden tab, multiple/unknown/missing faces, stale frames, or identity change. Both punch buttons use the same gate.
+
+This is a browser-side still-photo deterrent, not certified or server-verified liveness. Recorded video, generated video, modified JavaScript, or direct authenticated API requests can bypass it. Do not treat it as proof of physical presence for high-assurance attendance. Camera/glasses/lighting/device testing remains required. No new external service or fee is introduced.
+
+Publish attendance.html, cloud.js, and liveness.js together.
