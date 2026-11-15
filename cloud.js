@@ -75,19 +75,19 @@ async function renderMembers(){
  for(const member of members){const row=document.createElement('div');row.style.padding='10px 0';const label=document.createElement('span');label.textContent=member.email+' — '+(member.is_admin?'Administrator':member.approved?'Approved':'Pending');row.append(label);
  if(!member.is_admin){const button=document.createElement('button');button.className='btn btn-ghost';button.textContent=member.approved?'Revoke':'Approve';button.onclick=async()=>{button.disabled=true;try{await cloudRequest('attendance_members?user_id=eq.'+member.user_id,{method:'PATCH',body:JSON.stringify({approved:!member.approved})});await renderMembers();}catch(e){toast(e.message,'error');button.disabled=false;}};row.append(button);}container.append(row);}
 }
-// A user's account and detected face must both match before recording attendance.
+// Any approved account can operate a shared attendance station.
 async function markAttendance(personId,person){
- if(!person||person.user_id!==cloudSession?.user.id||records.some(r=>r.personId===personId&&r.date===todayStr()))return;
+ if(!person||!cloudMember?.approved||records.some(r=>r.personId===personId&&r.date===todayStr()))return;
  await punchCloud('in',person);
 }
 async function manualPunch(direction){
  const person=people.find(p=>p.id===recognizedPersonId);
- if(!attRunning||!person||person.user_id!==cloudSession?.user.id){toast('Show the face registered to your signed-in account.','error');return;}
+ if(!attRunning||!person||!cloudMember?.approved){toast('Show a registered face while signed in to an approved account.','error');return;}
  await punchCloud(direction,person);
 }
 async function punchCloud(direction,person){
  if(punching||!cloudMember?.approved)return;punching=true;
- try{await cloudRequest('rpc/attendance_punch',{method:'POST',body:JSON.stringify({p_direction:direction})});await syncWithCloud();toast((direction==='in'?'Punch-in':'Punch-out')+' saved for '+person.name,'success');}catch(e){toast(e.message,'error');}finally{punching=false;}
+ try{await cloudRequest('rpc/attendance_punch',{method:'POST',body:JSON.stringify({p_direction:direction,p_person_id:person.id})});await syncWithCloud();toast((direction==='in'?'Punch-in':'Punch-out')+' saved for '+person.name,'success');}catch(e){toast(e.message,'error');}finally{punching=false;}
 }
 async function captureAndRegister(){
  const name=document.getElementById('reg-name').value.trim();const status=document.getElementById('capture-status');const button=document.getElementById('btn-capture');
