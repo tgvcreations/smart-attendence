@@ -1265,10 +1265,11 @@ function exportCSV(){
   if(!isAttendanceAdmin()){toast('Only the administrator can export records.','error');return;}
   if(!records.length){ toast('No records to export.','error'); return; }
   const header = ['Name','Role','ID','Date','Punch In','Punch Out','Hours','Status','Method'];
+  const registrationIds = new Map(people.map(person => [person.id, person.empId]));
   const rows = records.map(r=>[
     r.name,
     r.role||'',
-    r.personId,
+    registrationIds.get(r.personId) ?? '',
     r.date,
     r.time,
     r.punchOut||'',
