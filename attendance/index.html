@@ -492,7 +492,6 @@ a{color:var(--accent);text-underline-offset:.24em;}
           <button type="button" class="btn btn-primary" id="btn-punch-in" onclick="startAttendanceCam('in')">Punch In</button>
           <button type="button" class="btn btn-ghost" id="btn-punch-out" onclick="startAttendanceCam('out')">Punch Out</button>
           <button type="button" class="btn btn-ghost" id="btn-stop-att" onclick="stopCam('att')" hidden>Cancel</button>
-          <button type="button" id="btn-switch-att" class="btn btn-ghost" onclick="switchCamera('att')">Use rear camera</button>
         </div>
         <div class="cam-wrap" id="att-cam-wrap" hidden>
           <video id="cam-video" autoplay muted playsinline></video>
@@ -565,7 +564,6 @@ a{color:var(--accent);text-underline-offset:.24em;}
             Capture Face
           </button>
           <button class="btn btn-danger" id="btn-stop-reg" onclick="stopCam('reg')" disabled>Stop</button>
-          <button type="button" id="btn-switch-reg" class="btn btn-ghost" onclick="switchCamera('reg')">Use rear camera</button>
         </div>
         <div id="capture-status" style="text-align:center;margin-top:12px;font-size:.85rem;color:var(--muted);"></div>
       </div>
@@ -707,7 +705,7 @@ a{color:var(--accent);text-underline-offset:.24em;}
 <!-- Toast container -->
 <div id="toast-container" role="status" aria-live="polite"></div>
 
-<script src="../liveness.js?v=5af3da38c104"></script>
+<script src="../liveness.js?v=72ac47367de5"></script>
 <script>
 // ═══════════════════════════════════════
 //  DATA LAYER
@@ -936,53 +934,21 @@ document.querySelectorAll('.cam-wrap').forEach(preview=>{
 });
 
 let attendanceDirection = null;
-let cameraFacing = 'user';
 let cameraStartInProgress = false;
 let cancelCameraMetadataWait;
 
-function setCameraFacing(facing){
-  cameraFacing = facing;
-  const label = facing === 'user' ? 'Use rear camera' : 'Use front camera';
-  document.getElementById('btn-switch-att').textContent = label;
-  document.getElementById('btn-switch-reg').textContent = label;
-}
-
-async function switchCamera(which){
-  if(cameraStartInProgress || (which === 'att' && punching))return;
-  if(which === 'reg' && regRunning && document.getElementById('btn-capture').disabled){
-    toast('Wait for the current capture to finish before switching cameras.','info');
-    return;
-  }
-  const running = which === 'att' ? attRunning : regRunning;
-  setCameraFacing(cameraFacing === 'user' ? 'environment' : 'user');
-  if(!running)return;
-  const direction = attendanceDirection;
-  stopCam(which);
-  if(which === 'att')await startAttendanceCam(direction);
-  else await startRegCam();
-}
-
-async function getStream(){
-  const size = {width:{ideal:640},height:{ideal:480}};
-  if(cameraFacing === 'environment'){
-    try{
-      return await navigator.mediaDevices.getUserMedia({video:{...size,facingMode:{exact:'environment'}}});
-    }catch(error){
-      if(!['NotFoundError','OverconstrainedError'].includes(error.name))throw error;
-      setCameraFacing('user');
-      toast('Rear camera unavailable. Using your default camera.','info');
-    }
-  }
-  return navigator.mediaDevices.getUserMedia({video:{...size,facingMode:{ideal:'user'}}});
+function getStream(which){
+  const size = which === 'att' ? {width:480,height:360} : {width:640,height:480};
+  return navigator.mediaDevices.getUserMedia({video:{
+    facingMode:{ideal:'user'},width:{ideal:size.width},height:{ideal:size.height},frameRate:{ideal:30}
+  }});
 }
 
 async function openCamera(which, videoId, pageId, isCurrent = ()=>true){
   if(cameraStartInProgress)return null;
   cameraStartInProgress = true;
-  const toggle = document.getElementById('btn-switch-'+which);
-  toggle.disabled = true;
   try{
-    const stream = await getStream();
+    const stream = await getStream(which);
     if(!isCurrent() || !document.getElementById(pageId).classList.contains('active') ||
        !document.body.classList.contains('attendance-signed-in')){
       stream.getTracks().forEach(track=>track.stop());
@@ -1005,7 +971,6 @@ async function openCamera(which, videoId, pageId, isCurrent = ()=>true){
     return video.srcObject === stream ? stream : null;
   }finally{
     cameraStartInProgress = false;
-    toggle.disabled = false;
   }
 }
 
@@ -1055,6 +1020,13 @@ async function runAttendanceLoop(){
   const vid = document.getElementById('cam-video');
   const canvas = document.getElementById('cam-canvas');
   if(vid.readyState >= 2){
+    if(document.hidden || vid.currentTime===lastChallengeVideoTime){
+      recognizedPersonId=null;
+      resetCameraChallenge('Waiting for live camera frames…');
+      attTimer=setTimeout(()=>requestAnimationFrame(runAttendanceLoop),200);
+      return;
+    }
+    lastChallengeVideoTime=vid.currentTime;
     let dets;
     try{dets = await faceapi
       .detectAllFaces(vid, new faceapi.SsdMobilenetv1Options({minConfidence:0.5}))
@@ -1067,21 +1039,18 @@ async function runAttendanceLoop(){
       attTimer=setTimeout(()=>requestAnimationFrame(runAttendanceLoop),1000);return;
     }
     if(!attRunning||cameraGeneration!==attCameraGeneration) return;
-    if(document.hidden||vid.currentTime===lastChallengeVideoTime){
+    if(document.hidden){
       recognizedPersonId=null;resetCameraChallenge('Waiting for live camera frames…');
       attTimer=setTimeout(()=>requestAnimationFrame(runAttendanceLoop),200);return;
     }
-    lastChallengeVideoTime=vid.currentTime;
-    const dims = {width: vid.videoWidth, height: vid.videoHeight};
-    canvas.width = dims.width;
-    canvas.height = dims.height;
-    faceapi.matchDimensions(canvas, dims);
-    const resized = faceapi.resizeResults(dets, dims);
+    if(canvas.width!==vid.videoWidth)canvas.width=vid.videoWidth;
+    if(canvas.height!==vid.videoHeight)canvas.height=vid.videoHeight;
     const ctx = canvas.getContext('2d');
     ctx.clearRect(0,0,canvas.width,canvas.height);
 
     if(dets.length===1 && matcherReady){
-      const best = dets.reduce((a,b) => b.detection.score > a.detection.score ? b : a);
+      const [best] = dets;
+      const box = best.detection.box;
       const match = faceMatcher.findBestMatch(best.descriptor);
       const conf = Math.round((1 - match.distance)*100);
       document.getElementById('conf-bar').style.width = conf+'%';
@@ -1090,24 +1059,21 @@ async function runAttendanceLoop(){
       if(match.label !== 'unknown'){
         const person = people.find(p=>p.id===match.label);
         const name = person ? person.name : match.label;
-        document.getElementById('rec-status').innerHTML = `<span style="color:var(--accent2);font-weight:700;">Recognised: ${esc(name)}</span>`;
+        const status = document.getElementById('rec-status');
+        const recognizedMessage = 'Recognised: '+name;
+        if(status.textContent!==recognizedMessage)status.textContent=recognizedMessage;
         document.getElementById('cam-name-tag').style.display='block';
-        document.getElementById('cam-name-tag').textContent = name;
+        const nameTag = document.getElementById('cam-name-tag');
+        if(nameTag.textContent!==name)nameTag.textContent=name;
 
-        // Draw green box
-        resized.forEach(det=>{
-          const box = det.detection.box;
-          ctx.strokeStyle='#48cfad'; ctx.lineWidth=3;
-          ctx.strokeRect(box.x,box.y,box.width,box.height);
-          ctx.fillStyle='rgba(72,207,173,0.15)';
-          ctx.fillRect(box.x,box.y,box.width,box.height);
-        });
+        ctx.strokeStyle='#48cfad'; ctx.lineWidth=3;
+        ctx.strokeRect(box.x,box.y,box.width,box.height);
 
         recognizedPersonId = person ? person.id : null;
         let handObservation;
         try{
-          document.getElementById('liveness-status').textContent=handTracker?'Checking your hand…':'Loading hand detection…';
-          handObservation=await detectRaisedHand(vid,best.detection.box);
+          if(!handTracker)document.getElementById('liveness-status').textContent='Loading hand detection…';
+          handObservation=await detectRaisedHand(vid,box);
         }catch(e){
           if(!attRunning||cameraGeneration!==attCameraGeneration)return;
           recognizedPersonId=null;resetCameraChallenge(handTrackerFailure||'Hand detection failed. Reload the page.');
@@ -1123,11 +1089,8 @@ async function runAttendanceLoop(){
         resetCameraChallenge('Show a registered face to begin.');
         document.getElementById('rec-status').innerHTML = `<span style="color:var(--warn);">Unknown face detected</span>`;
         document.getElementById('cam-name-tag').style.display='none';
-        resized.forEach(det=>{
-          const box = det.detection.box;
-          ctx.strokeStyle='#ffb347'; ctx.lineWidth=3;
-          ctx.strokeRect(box.x,box.y,box.width,box.height);
-        });
+        ctx.strokeStyle='#ffb347'; ctx.lineWidth=3;
+        ctx.strokeRect(box.x,box.y,box.width,box.height);
       }
     } else if(dets.length===0){
       recognizedPersonId = null;
@@ -1142,7 +1105,7 @@ async function runAttendanceLoop(){
       document.getElementById('cam-name-tag').style.display='none';
     }
   }else{recognizedPersonId=null;resetCameraChallenge('Waiting for camera…');}
-  if(attRunning&&cameraGeneration===attCameraGeneration)attTimer = setTimeout(()=>requestAnimationFrame(runAttendanceLoop), 150);
+  if(attRunning&&cameraGeneration===attCameraGeneration)attTimer = setTimeout(()=>requestAnimationFrame(runAttendanceLoop), 330);
 }
 
 function stopCam(which){

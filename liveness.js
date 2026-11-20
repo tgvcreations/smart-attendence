@@ -74,7 +74,7 @@ async function detectRaisedHand(video,face){
 }
 const attendanceChallenge=new FaceChallenge();
 function renderCameraChallenge(){
- const el=document.getElementById('liveness-status');if(el)el.textContent=attendanceChallenge.message;
+ const el=document.getElementById('liveness-status');if(el&&el.textContent!==attendanceChallenge.message)el.textContent=attendanceChallenge.message;
 }
 function resetCameraChallenge(message){attendanceChallenge.reset(message);renderCameraChallenge();}
 document.addEventListener('visibilitychange',()=>{if(document.hidden)resetCameraChallenge('Return to the camera and complete a new challenge.');});
