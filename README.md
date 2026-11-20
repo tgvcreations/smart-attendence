@@ -5,7 +5,7 @@ Region: Mumbai (ap-south-1)
 
 ## First use
 
-1. Publish attendance.html and cloud.js together to GitHub Pages.
+1. Publish the repository root to GitHub Pages and use the sign-in link on the home page.
 2. Create an account on the website using cherukusaivarun123@gmail.com.
 3. Confirm the email, then return to the website and sign in. This verified email is the administrator.
 4. Other users create and confirm their accounts. The administrator approves them under Settings > User Approvals.
@@ -26,18 +26,16 @@ Administrator can see all records and remove registrations; approved users can s
 
 ## Publish
 
-```powershell
-cd "C:\Users\hp\Desktop\test\smart attendence"
-git add attendance.html cloud.js README.md
-git commit -m "Connect attendance to Supabase with shared accounts"
-git push
-```
+Configure GitHub Pages to publish the repository root. The home page links to
+`/attendance/`, and the previous `attendance.html` URL forwards visitors to it.
 
+The canonical URLs and social metadata use the project Pages address. When
+moving to a custom domain, update the canonical URLs, share image URLs, sitemap,
+robots file, 404 links and styles, and structured data to use the final HTTPS
+address.
 
 ## Free raise-hand challenge
 
 Keep your hands lowered until prompted, then raise either hand beside your face with the palm toward the camera. No eye-blink or mouth movement is required. The challenge expires, is tied to the recognized person, and is required for both punch actions. The free MediaPipe Hands model is loaded from a pinned CDN version. If detection fails, attendance stays blocked.
 
 This is a browser-side movement check, not verified face liveness. Someone can hold up a face photo and raise a real hand beside it. Videos, modified browsers, and direct authenticated API requests can also bypass the intended check. Do not use it as proof of physical presence. Real phone-camera testing is still required.
-
-Publish attendance.html, cloud.js, and liveness.js together.

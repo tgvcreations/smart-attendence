@@ -25,6 +25,24 @@ class FaceChallenge {
  consume(personId,now=performance.now()){if(!this.ready(personId,now))return false;this.reset('Attendance submitted. Lower your hand before another challenge.');return true;}
 }
 const HAND_MODEL_BASE='https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4.1675469240/';
+const cameraScripts = new Map();
+function loadCameraScript(url){
+ if(!cameraScripts.has(url)){
+  cameraScripts.set(url,new Promise((resolve,reject)=>{
+   const script=document.createElement('script');
+   script.src=url;
+   script.crossOrigin='anonymous';
+   script.onload=resolve;
+   script.onerror=()=>{
+    script.remove();
+    cameraScripts.delete(url);
+    reject(new Error('Could not load a camera library. Check your connection and try again.'));
+   };
+   document.head.append(script);
+  }));
+ }
+ return cameraScripts.get(url);
+}
 let handTracker=null,handTrackerFailure=null,handResults=null;
 function raisedHandObservation(results,face,width,height){
  if(!results||!Array.isArray(results.multiHandLandmarks)||!face||width<=0||height<=0)return {valid:false,raised:false};
@@ -44,6 +62,7 @@ async function detectRaisedHand(video,face){
  if(handTrackerFailure)throw new Error(handTrackerFailure);
  try{
   if(!handTracker){
+   await loadCameraScript(HAND_MODEL_BASE+'hands.js');
    if(typeof Hands!=='function')throw new Error('Hand model did not load. Check your internet connection and reload.');
    handTracker=new Hands({locateFile:file=>HAND_MODEL_BASE+file});
    handTracker.setOptions({maxNumHands:2,modelComplexity:0,minDetectionConfidence:.7,minTrackingConfidence:.7});

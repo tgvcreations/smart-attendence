@@ -1,0 +1,19 @@
+* { box-sizing: border-box; }
+:root { color-scheme: light; color: #112329; background: #f7f9f6; font: 16px/1.6 system-ui, sans-serif; }
+body { margin: 0; }
+a { color: #07564c; text-underline-offset: .24em; }
+a:focus-visible { outline: 3px solid #067a68; outline-offset: 5px; }
+.wrap { width: min(1080px, calc(100% - 3rem)); margin-inline: auto; }
+.bar { min-height: 82px; display: flex; align-items: center; justify-content: space-between; gap: 1rem; border-bottom: 1px solid #cedbd6; }
+.bar nav, .links { display: flex; align-items: center; flex-wrap: wrap; gap: 1.25rem; }
+.brand { display: inline-flex; align-items: center; gap: .65rem; color: inherit; font-weight: 750; text-decoration: none; }
+.hero, .missing { padding-block: clamp(3rem, 12vw, 8rem); }
+h1, h2, h3, p { margin: 0; }
+h1 { max-width: 14ch; margin-block: .2em .3em; font-size: clamp(2.6rem, 7.4vw, 5.65rem); letter-spacing: -.065em; line-height: 1.02; }
+.hero p, .missing p { max-width: 53ch; margin-bottom: 1.8rem; color: #38504f; font-size: 1.15rem; }
+.action { display: inline-block; border-radius: .4rem; background: #07564c; color: white; padding: .72rem 1rem; font-weight: 650; text-decoration: none; }
+.action:hover { background: #043e36; }
+.workflow { border-top: 1px solid #cedbd6; padding-block: 2rem 4rem; }
+.steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2rem; margin-top: 1.3rem; }
+.steps p { margin-top: .4em; color: #38504f; }
+@media (max-width: 640px) { .wrap { width: calc(100% - 2rem); } .steps { grid-template-columns: 1fr; gap: 1.2rem; } .bar nav { gap: .75rem; } }

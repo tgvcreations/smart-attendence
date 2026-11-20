@@ -1,0 +1,8 @@
+# FaceAttend
+
+> FaceAttend is a shared attendance application for schools and teams.
+
+## Public information
+
+- [FaceAttend](https://tgvcreations.github.io/smart-attendence/): Overview of registration, attendance, and administrator exports.
+- [Attendance workspace](https://tgvcreations.github.io/smart-attendence/attendance/): Sign-in entry point for approved accounts.

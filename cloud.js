@@ -5,6 +5,12 @@ let cloudSession = null, cloudMember = null, cloudRefresh = null, cloudSync = nu
 let accountGeneration = 0, punching = false;
 let sharedHours={fullDayHours:8,halfDayHours:4};
 const stationPunches=new Set();
+function setAccountGate(visible){
+ document.getElementById('account-gate').style.display=visible?'flex':'none';
+ document.body.classList.toggle('attendance-signed-in',!visible);
+ const activePage=document.querySelector('.nav-item.active')?.dataset.page;
+ document.title=visible?'Attendance workspace | FaceAttend':(pageTitles[activePage]||'Attendance workspace')+' | FaceAttend';
+}
 function isAttendanceAdmin(){return !!(cloudMember?.approved && cloudMember?.is_admin);}
 function applyAdminAccess(){
  document.body.classList.toggle('attendance-admin',isAttendanceAdmin());
@@ -57,7 +63,7 @@ async function cloudSignOut(){
  const token=cloudSession?.access_token; accountGeneration++;storeSession(null);cloudMember=null;stationPunches.clear();applyAdminAccess();
  stopCam('att');stopCam('reg');people=[];records=[];buildMatcher();renderDashboard();renderPeople();renderRecords();renderMarkedToday();renderRecentlyRegistered();
  document.getElementById('members-list').replaceChildren();document.getElementById('admin-members').style.display='none';
- document.getElementById('account-gate').style.display='flex';accountMessage('Signed out.');
+ setAccountGate(true);accountMessage('Signed out.');
  if(token)fetch(CLOUD_URL+'/auth/v1/logout',{method:'POST',headers:{apikey:CLOUD_KEY,Authorization:'Bearer '+token}}).catch(()=>{});
 }
 function syncWithCloud(notify=false){
@@ -69,7 +75,7 @@ function syncWithCloud(notify=false){
    const membership=await cloudRequest('attendance_members?user_id=eq.'+cloudSession.user.id+'&select=*');
    if(generation!==accountGeneration)return;
    cloudMember=membership[0];applyAdminAccess();
-   if(!cloudMember?.approved){people=[];records=[];buildMatcher();stopCam('att');stopCam('reg');document.getElementById('account-gate').style.display='flex';accountMessage('Your account is waiting for administrator approval. This page checks automatically.');return;}
+   if(!cloudMember?.approved){people=[];records=[];buildMatcher();stopCam('att');stopCam('reg');setAccountGate(true);accountMessage('Your account is waiting for administrator approval. This page checks automatically.');return;}
    const [sharedPeople,sharedRecords]=await Promise.all([cloudRequest('attendance_people?select=*&order=created_at.asc'),cloudMember.is_admin?cloudRequest('attendance_records?select=*&order=punched_in_at.desc'):Promise.resolve([])]);
    if(generation!==accountGeneration)return;
    people=sharedPeople.map(p=>({...p,empId:p.emp_id,createdAt:p.created_at}));
@@ -78,7 +84,7 @@ function syncWithCloud(notify=false){
     return {id:r.id,personId:r.person_id,name:p?.name||'Removed person',role:p?.role||'',date:r.attendance_date,time:time(r.punched_in_at),punchOut:r.punched_out_at?time(r.punched_out_at):null,hours:Math.round(hours*100)/100,method:'Face Recognition',status:r.punched_out_at?getAttendanceStatus(hours).label:'In Progress'};
    });
    buildMatcher();updateSidebarStats();renderDashboard();renderPeople();renderRecords();renderMarkedToday();renderRecentlyRegistered();
-   document.getElementById('account-gate').style.display='none';document.getElementById('cloud-status').textContent='Connected • '+cloudMember.email+' • Times shown in India Standard Time';
+   setAccountGate(false);document.getElementById('cloud-status').textContent='Connected • '+cloudMember.email+' • Times shown in India Standard Time';
    document.getElementById('admin-members').style.display=cloudMember.is_admin?'block':'none';
    if(cloudMember.is_admin){
     await renderMembers();
