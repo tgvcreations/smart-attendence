@@ -72,16 +72,13 @@ html,body{height:100%;font-family:system-ui,sans-serif;background:var(--bg);colo
   background:var(--surface);border-bottom:1px solid var(--border);
   display:flex;align-items:center;justify-content:space-between;padding:0 24px;z-index:99;
 }
-#hamburger{display:none;background:none;border:none;color:var(--text);cursor:pointer;padding:4px;}
+#hamburger{display:none;background:none;border:none;color:var(--text);cursor:pointer;min-width:44px;min-height:44px;}
 #page-title{font-size:1.05rem;font-weight:600;}
 .topbar-right{display:flex;align-items:center;gap:14px;}
 .badge{
   background:var(--accent);
   color:#fff;font-size:.7rem;font-weight:700;padding:3px 10px;border-radius:20px;
 }
-#model-status{font-size:.75rem;color:var(--muted);display:flex;align-items:center;gap:6px;}
-.dot{width:8px;height:8px;border-radius:50%;background:var(--warn);display:inline-block;animation:pulse 1.5s infinite;}
-.dot.ready{background:var(--accent2);animation:none;}
 
 /* ── Main ── */
 #main{margin-left:240px;margin-top:60px;padding:28px clamp(20px,4vw,58px) 48px;min-height:calc(100vh - 60px);}
@@ -104,7 +101,8 @@ html,body{height:100%;font-family:system-ui,sans-serif;background:var(--bg);colo
 /* ── Camera area ── */
 .cam-wrap{position:relative;width:100%;max-width:520px;margin:0 auto;border-radius:var(--radius);overflow:hidden;background:#000;aspect-ratio:4/3;}
 #cam-video,#reg-video{width:100%;height:100%;object-fit:cover;display:block;}
-#cam-canvas,#reg-canvas{position:absolute;top:0;left:0;width:100%;height:100%;}
+#cam-canvas,#reg-canvas{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
+.cam-wrap.preview-flipped :is(video,canvas){transform:scaleX(-1);}
 .cam-overlay{
   position:absolute;inset:0;pointer-events:none;
   border:2px solid rgb(8 115 99 / .55);border-radius:var(--radius);
@@ -184,8 +182,40 @@ tr:hover td{background:var(--bg);}
   position:fixed;inset:0;background:var(--bg);z-index:9999;
   display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;
 }
-.loader-ring{width:60px;height:60px;border:4px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;}
-@keyframes spin{to{transform:rotate(360deg)}}
+.loader-butterfly{
+  position:relative;width:104px;height:88px;perspective:180px;
+  animation:butterfly-hover 2.4s ease-in-out infinite;
+}
+.butterfly-wing{
+  position:absolute;top:14px;width:48px;height:61px;transform-style:preserve-3d;
+  animation:butterfly-flap .85s ease-in-out infinite;
+}
+.butterfly-wing.left{right:50%;transform-origin:right center;}
+.butterfly-wing.right{left:50%;transform-origin:left center;}
+.butterfly-wing::before,.butterfly-wing::after{
+  content:'';position:absolute;display:block;background:var(--accent);
+}
+.butterfly-wing::before{top:0;width:47px;height:43px;background:linear-gradient(135deg,#3da98c,var(--accent));}
+.butterfly-wing::after{top:31px;width:32px;height:30px;background:var(--accent2);}
+.butterfly-wing.left::before{right:0;border-radius:62% 95% 24% 88%;}
+.butterfly-wing.right::before{left:0;border-radius:95% 62% 88% 24%;}
+.butterfly-wing.left::after{right:1px;border-radius:88% 22% 82% 70%;}
+.butterfly-wing.right::after{left:1px;border-radius:22% 88% 70% 82%;}
+.butterfly-body{
+  position:absolute;left:calc(50% - 3px);top:26px;width:6px;height:46px;
+  border-radius:60%;background:var(--text);
+}
+.butterfly-body::before,.butterfly-body::after{
+  content:'';position:absolute;bottom:calc(100% - 2px);width:10px;height:14px;
+  border-top:2px solid var(--text);border-radius:50%;
+}
+.butterfly-body::before{right:3px;transform:rotate(40deg);}
+.butterfly-body::after{left:3px;transform:rotate(-40deg);}
+@keyframes butterfly-flap{0%,100%{transform:rotateY(0);}50%{transform:rotateY(68deg);}}
+@keyframes butterfly-hover{0%,100%{transform:translateY(3px);}50%{transform:translateY(-7px);}}
+@media(prefers-reduced-motion:reduce){
+  .loader-butterfly,.butterfly-wing{animation:none;}
+}
 #loader p{color:var(--muted);font-size:.9rem;}
 
 /* ── Progress ── */
@@ -235,7 +265,6 @@ tr:hover td{background:var(--bg);}
 
 /* ── Empty state ── */
 .empty-state{text-align:center;padding:48px 20px;color:var(--muted);}
-.empty-state .empty-icon{font-size:3rem;margin-bottom:12px;}
 .empty-state p{font-size:.9rem;}
 
 /* ── Scrollbar ── */
@@ -243,14 +272,12 @@ tr:hover td{background:var(--bg);}
 ::-webkit-scrollbar-track{background:var(--surface);}
 ::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
 
-/* ── Pulse ── */
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
 
 /* ── Mobile ── */
 #overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:99;}
 @media(max-width:768px){
-  #sidebar{transform:translateX(-240px);}
-  #sidebar.open{transform:translateX(0);}
+  #sidebar{transform:translateX(-240px);visibility:hidden;}
+  #sidebar.open{transform:translateX(0);visibility:visible;}
   #overlay.open{display:block;}
   #topbar{left:0;}
   #hamburger{display:block;}
@@ -300,8 +327,23 @@ a{color:var(--accent);text-underline-offset:.24em;}
   .topbar-right{gap:.5rem;}
   .topbar-right .badge{max-width:14ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 }
-@media(max-width:400px){#model-status{display:none;}.account-wrap{width:calc(100% - 2rem);}}
+@media(max-width:400px){.account-wrap{width:calc(100% - 2rem);}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important;}}
+.capture-guide{padding-inline-start:1.15rem;color:var(--muted);font-size:.85rem;line-height:1.8;}
+.capture-guide li::marker{color:var(--accent);}
+.people-search{position:relative;max-width:360px;}
+.people-search svg{position:absolute;inset-inline-start:14px;top:50%;transform:translateY(-50%);color:var(--accent);pointer-events:none;}
+#search-people{padding-inline-start:42px;}
+[hidden]{display:none!important;}
+.filter-row{display:flex;align-items:center;gap:.65rem;flex-wrap:wrap;margin-bottom:.8rem;}
+.filter-row .people-search{width:min(100%,360px);}
+.record-filters label{font-weight:650;margin:0;}
+.record-filters input{width:auto;max-width:100%;}
+.result-summary{color:var(--muted);font-size:.85rem;margin-block:.65rem 1rem;}
+.people-grid .empty-state{grid-column:1/-1;text-align:left;padding:1.25rem;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);}
+@media(max-width:480px){#toast-container{left:12px;right:12px;bottom:12px;}.toast{max-width:100%;}}
+.member-row{display:flex;align-items:center;justify-content:space-between;gap:.5rem 1rem;flex-wrap:wrap;padding:.65rem 0;border-bottom:1px solid var(--border);overflow-wrap:anywhere;}
+.member-actions{display:flex;flex-wrap:wrap;gap:.5rem;}
 </style>
 <script type="application/ld+json">{"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Home", "item": "https://tgvcreations.github.io/smart-attendence/"}, {"@type": "ListItem", "position": 2, "name": "Attendance workspace", "item": "https://tgvcreations.github.io/smart-attendence/attendance/"}]}</script>
 </head>
@@ -309,16 +351,20 @@ a{color:var(--accent);text-underline-offset:.24em;}
 
 <!-- HTTP Warning Banner -->
 <div id="http-banner" style="display:none;position:fixed;top:0;left:0;right:0;z-index:99999;background:#ff5e5e;color:#fff;padding:12px 20px;font-size:.88rem;text-align:center;font-weight:600;">
-  ⚠️ Camera requires a local server. Open via <code style="background:rgba(0,0,0,.2);padding:2px 6px;border-radius:4px;">http://localhost</code> — see instructions below. &nbsp;
-  <button onclick="document.getElementById('http-banner').style.display='none'" style="background:rgba(0,0,0,.25);border:none;color:#fff;padding:3px 10px;border-radius:6px;cursor:pointer;">✕</button>
+  Camera requires a local server. Open via <code style="background:rgba(0,0,0,.2);padding:2px 6px;border-radius:4px;">http://localhost</code> — see instructions below. &nbsp;
+  <button aria-label="Dismiss camera notice" onclick="document.getElementById('http-banner').style.display='none'" style="background:rgba(0,0,0,.25);border:none;color:#fff;padding:3px 10px;border-radius:6px;cursor:pointer;">✕</button>
 </div>
 
 <!-- Server Instructions Modal removed -->
 
 <!-- Loader -->
 <div id="loader" hidden role="status">
-  <div class="loader-ring"></div>
-  <p id="loader-text">Initializing AI models…</p>
+  <div class="loader-butterfly" aria-hidden="true">
+    <span class="butterfly-wing left"></span>
+    <span class="butterfly-wing right"></span>
+    <span class="butterfly-body"></span>
+  </div>
+  <p id="loader-text">Preparing the camera…</p>
 </div>
 
 <!-- Overlay for mobile sidebar -->
@@ -332,7 +378,7 @@ a{color:var(--accent);text-underline-offset:.24em;}
   </a>
   <nav aria-label="Workspace">
     <div class="nav-section">Main</div>
-    <button type="button" class="nav-item active admin-only" data-page="dashboard">
+    <button type="button" class="nav-item active admin-only" data-page="dashboard" aria-current="page">
       <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
       Dashboard
     </button>
@@ -369,13 +415,12 @@ a{color:var(--accent);text-underline-offset:.24em;}
 <!-- Topbar -->
 <header id="topbar">
   <div style="display:flex;align-items:center;gap:14px;">
-    <button id="hamburger" aria-label="Toggle navigation" onclick="toggleSidebar()">
+    <button id="hamburger" aria-label="Toggle navigation" aria-controls="sidebar" aria-expanded="false" onclick="toggleSidebar()">
       <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
     </button>
     <span id="page-title">Dashboard</span>
   </div>
   <div class="topbar-right">
-    <div id="model-status"><span class="dot" id="model-dot"></span><span id="model-text">Camera models idle</span></div>
     <span class="badge" id="date-badge"></span>
   </div>
 </header>
@@ -387,7 +432,7 @@ a{color:var(--accent);text-underline-offset:.24em;}
   <!-- DASHBOARD -->
   <div class="page active admin-only" id="page-dashboard">
     <div class="section-header">
-      <div><h1>Dashboard</h1><p>Today's attendance overview</p></div>
+      <div><h1 tabindex="-1">Dashboard</h1><p>Today's attendance overview</p></div>
       <button class="btn btn-primary" onclick="navigate('attendance')">
         <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
         Mark attendance
@@ -433,10 +478,9 @@ a{color:var(--accent);text-underline-offset:.24em;}
   <!-- MARK ATTENDANCE -->
   <div class="page" id="page-attendance">
     <div class="section-header">
-      <div><h1>Mark Attendance</h1><p>Any approved account can mark attendance for a registered face. Complete the raise-hand challenge to punch in; repeat it before Punch Out.</p></div>
+      <div><h1 tabindex="-1">Mark Attendance</h1><p>Any approved account can mark attendance for a registered face. Complete the raise-hand challenge to punch in; repeat it before Punch Out.</p></div>
     </div>
     <div class="alert alert-warn">
-      <span>⚠️</span>
       <span>Make sure you are in a well-lit area and looking directly at the camera. Each person is marked once per day.</span>
     </div>
     <div style="display:flex;gap:20px;flex-wrap:wrap;">
@@ -461,6 +505,7 @@ a{color:var(--accent);text-underline-offset:.24em;}
           <button class="btn btn-primary" id="btn-punch-in" style="display:none" onclick="manualPunch('in')">Punch In</button>
           <button class="btn btn-danger" id="btn-punch-out" style="display:none" onclick="manualPunch('out')">Punch Out</button>
           <button class="btn btn-ghost" id="btn-stop-att" onclick="stopCam('att')" disabled>Stop</button>
+          <button type="button" id="btn-switch-att" class="btn btn-ghost" onclick="switchCamera('att')">Use rear camera</button>
         </div>
       </div>
       <div style="flex:1;min-width:220px;">
@@ -482,26 +527,25 @@ a{color:var(--accent);text-underline-offset:.24em;}
   <!-- REGISTER PERSON -->
   <div class="page" id="page-register">
     <div class="section-header">
-      <div><h1>Register Person</h1><p>Enroll a new person into the system</p></div>
+      <div><h1 tabindex="-1">Register Person</h1><p>Enroll a new person into the system</p></div>
     </div>
     <div class="alert alert-info">
-      <span>ℹ️</span>
-      <span>Enter the person's details, start the camera, then click "Capture Face". The face descriptor is saved locally in your browser.</span>
+      <span>Enter the person's details, start the camera, then select Capture Face. The face descriptor is saved to the shared attendance database.</span>
     </div>
     <div class="two-col">
       <div class="card">
         <div class="card-title" style="margin-bottom:14px;">Personal Details</div>
         <div class="form-group">
-          <label>Full Name *</label>
+          <label for="reg-name">Full Name *</label>
           <input type="text" id="reg-name"/>
         </div>
         <div class="input-row">
           <div class="form-group">
-            <label>Role / Department</label>
+            <label for="reg-role">Role / Department</label>
             <input type="text" id="reg-role"/>
           </div>
           <div class="form-group">
-            <label>ID / Roll No.</label>
+            <label for="reg-id">ID / Roll No.</label>
             <input type="text" id="reg-id"/>
           </div>
         </div>
@@ -518,23 +562,24 @@ a{color:var(--accent);text-underline-offset:.24em;}
         <div class="ctrl-row">
           <button class="btn btn-ghost" id="btn-start-reg" onclick="startRegCam()">Start Camera</button>
           <button class="btn btn-success" id="btn-capture" onclick="captureAndRegister()" disabled>
-            📸 Capture Face
+            Capture Face
           </button>
           <button class="btn btn-danger" id="btn-stop-reg" onclick="stopCam('reg')" disabled>Stop</button>
+          <button type="button" id="btn-switch-reg" class="btn btn-ghost" onclick="switchCamera('reg')">Use rear camera</button>
         </div>
         <div id="capture-status" style="text-align:center;margin-top:12px;font-size:.85rem;color:var(--muted);"></div>
       </div>
       <div class="card">
         <div class="card-title" style="margin-bottom:14px;">Capture Guide</div>
-        <div style="color:var(--muted);font-size:.85rem;line-height:1.8;">
-          <div>✅ &nbsp;Face the camera directly</div>
-          <div>✅ &nbsp;Ensure good lighting</div>
-          <div>✅ &nbsp;Remove glasses if possible</div>
-          <div>✅ &nbsp;Keep a neutral expression</div>
-          <div>✅ &nbsp;One person per frame</div>
-          <div>❌ &nbsp;Avoid strong backlight</div>
-          <div>❌ &nbsp;Don't cover your face</div>
-        </div>
+        <ul class="capture-guide">
+          <li>Face the camera directly</li>
+          <li>Ensure good lighting</li>
+          <li>Remove glasses if possible</li>
+          <li>Keep a neutral expression</li>
+          <li>One person per frame</li>
+          <li>Avoid strong backlight</li>
+          <li>Don't cover your face</li>
+        </ul>
         <div class="divider"></div>
         <div class="card-title">Registered Recently</div>
         <div id="recently-registered" style="margin-top:10px;"></div>
@@ -545,26 +590,32 @@ a{color:var(--accent);text-underline-offset:.24em;}
   <!-- PEOPLE -->
   <div class="page" id="page-people">
     <div class="section-header">
-      <div><h1>People</h1><p>All registered persons</p></div>
-      <button class="btn btn-primary" onclick="navigate('register')">+ Register New</button>
+      <div><h1 tabindex="-1">People</h1><p>Find a registration by name, role, or student or employee ID.</p></div>
+      <button class="btn btn-primary" onclick="navigate('register')">Register a person</button>
     </div>
-    <div style="margin-bottom:16px;">
-      <input type="text" id="search-people" placeholder="🔍  Search by name, role or ID…" oninput="renderPeople()" style="max-width:360px;"/>
+    <div class="filter-row">
+      <div class="people-search">
+        <svg aria-hidden="true" focusable="false" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4 4"/></svg>
+        <input type="search" id="search-people" aria-label="Search people by name, role or ID" placeholder="Search by name, role or ID…" oninput="renderPeople()">
+      </div>
+      <button id="people-clear" type="button" class="btn btn-ghost" onclick="clearPeopleSearch()" hidden>Clear search</button>
     </div>
+    <p id="people-count" class="result-summary" role="status"></p>
     <div id="people-grid" class="people-grid"></div>
   </div>
 
   <!-- RECORDS -->
   <div class="page admin-only" id="page-records">
     <div class="section-header">
-      <div><h1>Attendance Records</h1><p>Full history of all attendance entries</p></div>
-      <div style="display:flex;gap:10px;flex-wrap:wrap;">
-        <input type="date" id="filter-date" onchange="renderRecords()"/>
-        <button class="btn btn-ghost" onclick="clearFilter()">Clear</button>
-        <button class="btn btn-success" onclick="exportCSV()">⬇ Export CSV</button>
-      </div>
+      <div><h1 tabindex="-1">Attendance Records</h1><p>Full history of all attendance entries</p></div>
+      <button id="export-records" class="btn btn-success" onclick="exportCSV()">Export all records (CSV)</button>
     </div>
-    <div class="table-wrap">
+    <div class="filter-row record-filters">
+      <label for="filter-date">Filter by date</label>
+      <input type="date" id="filter-date" onchange="renderRecords()">
+      <button id="records-today" class="btn btn-ghost" onclick="showTodayRecords()" hidden>Today</button>
+    </div>
+    <div id="records-table" class="table-wrap" role="region" aria-label="Attendance records table" tabindex="0">
       <table>
         <thead>
           <tr>
@@ -582,16 +633,16 @@ a{color:var(--accent);text-underline-offset:.24em;}
       </table>
     </div>
     <div id="records-empty" class="empty-state" style="display:none;">
-      <div class="empty-icon">📋</div>
+
       <p>No records found.</p>
     </div>
-    <div id="records-footer" style="margin-top:12px;font-size:.8rem;color:var(--muted);"></div>
+    <p id="records-footer" class="result-summary" role="status"></p>
   </div>
 
   <!-- SETTINGS -->
   <div class="page admin-only" id="page-settings">
     <div class="section-header">
-      <div><h1>Working Hours & Settings</h1><p>Configure thresholds for Full Day and Half Day attendance status</p></div>
+      <div><h1 tabindex="-1">Working Hours & Settings</h1><p>Configure thresholds for Full Day and Half Day attendance status</p></div>
     </div>
     <div class="card" style="max-width:500px;margin-bottom:20px;">
       <div class="card-title" style="margin-bottom:14px;">Attendance Thresholds</div>
@@ -613,6 +664,25 @@ a{color:var(--accent);text-underline-offset:.24em;}
       <button class="btn btn-ghost" onclick="syncWithCloud(true)">Refresh</button>
       <button class="btn btn-ghost" onclick="cloudSignOut()">Sign Out</button>
     </div>
+    <section class="card" style="max-width:700px;margin-bottom:20px;" aria-labelledby="geofence-title">
+      <h2 id="geofence-title" class="card-title">Attendance Geofence</h2>
+      <p style="margin-bottom:14px;">Require the device to be inside the allowed area at punch-in and punch-out.</p>
+      <form id="geofence-form" onsubmit="saveGeofence(event)">
+        <fieldset id="geofence-fields" disabled style="border:0;min-width:0;">
+          <div class="form-group"><label><input type="checkbox" id="geofence-enabled"> Require location for attendance</label></div>
+          <div class="input-row">
+            <div class="form-group"><label for="geofence-latitude">Center latitude</label><input type="number" id="geofence-latitude" min="-90" max="90" step="any"></div>
+            <div class="form-group"><label for="geofence-longitude">Center longitude</label><input type="number" id="geofence-longitude" min="-180" max="180" step="any"></div>
+          </div>
+          <div class="form-group"><label for="geofence-radius">Radius in meters</label><input type="number" id="geofence-radius" min="1" max="50000" step="1"></div>
+          <div class="filter-row">
+            <button class="btn btn-ghost" type="button" onclick="useCurrentGeofenceLocation(this)">Use current location</button>
+            <button class="btn btn-primary" type="submit">Save geofence</button>
+          </div>
+        </fieldset>
+        <p id="geofence-status" role="status" style="color:var(--muted);">Loading geofence settings…</p>
+      </form>
+    </section>
     <div class="card" id="admin-members" style="display:none">
       <div class="card-title">User Approvals</div>
       <div id="members-list"></div>
@@ -622,7 +692,7 @@ a{color:var(--accent);text-underline-offset:.24em;}
 </main>
 
 <!-- Toast container -->
-<div id="toast-container"></div>
+<div id="toast-container" role="status" aria-live="polite"></div>
 
 <script src="../liveness.js?v=7c5d2ed99921"></script>
 <script>
@@ -663,7 +733,6 @@ function ensureFaceModels(){
     loader.hidden = false;
     modelLoad = loadModels().finally(() => { loader.hidden = true; }).catch(error => {
       modelLoad = undefined;
-      document.getElementById('model-text').textContent = 'Camera models unavailable';
       throw error;
     });
   }
@@ -682,8 +751,6 @@ async function loadModels(){
   document.getElementById('loader-text').textContent = 'Loading recognition model…';
   await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
   modelsLoaded = true;
-  document.getElementById('model-dot').classList.add('ready');
-  document.getElementById('model-text').textContent = 'AI Ready';
   buildMatcher();
 }
 
@@ -702,39 +769,77 @@ function buildMatcher(){
 // ═══════════════════════════════════════
 const pageTitles = {dashboard:'Dashboard',attendance:'Mark Attendance',register:'Register Person',people:'People',records:'Records',settings:'Settings'};
 
-function navigate(page){
-  if(['dashboard','records','settings'].includes(page) && !isAttendanceAdmin()){toast('Administrator access required.','error');return;}
+const adminPages = new Set(['dashboard','records','settings']);
+
+function storeWorkspacePage(page){
+  if(page && !cloudMember?.user_id)return;
+  const workspacePage = page ? {page, userId:cloudMember.user_id} : null;
+  try{history.replaceState({...history.state, workspacePage},'');}catch{}
+}
+
+function restoreWorkspacePage(userId){
+  const saved = history.state?.workspacePage;
+  if(saved?.userId !== userId || !Object.hasOwn(pageTitles,saved?.page))return;
+  if(adminPages.has(saved.page) && !isAttendanceAdmin())return;
+  navigate(saved.page, false);
+}
+
+function navigate(page, moveFocus = true){
+  if(adminPages.has(page) && !isAttendanceAdmin()){toast('Administrator access required.','error');return;}
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  document.getElementById('page-'+page).classList.add('active');
-  document.querySelector(`.nav-item[data-page="${page}"]`).classList.add('active');
+  document.querySelectorAll('.nav-item.active').forEach(item=>{
+    item.classList.remove('active');
+    item.removeAttribute('aria-current');
+  });
+  const panel = document.getElementById('page-'+page);
+  panel.classList.add('active');
+  const activeItem = document.querySelector(`.nav-item[data-page="${page}"]`);
+  activeItem.classList.add('active');
+  activeItem.setAttribute('aria-current','page');
   document.getElementById('page-title').textContent = pageTitles[page];
   if(document.body.classList.contains('attendance-signed-in'))document.title = pageTitles[page] + ' | FaceAttend';
   // Close sidebar on mobile
-  if(window.innerWidth<=768){ document.getElementById('sidebar').classList.remove('open'); document.getElementById('overlay').classList.remove('open'); }
+  setSidebarOpen(false);
   // Stop cameras when leaving
-  if(page !== 'attendance' && attRunning) stopCam('att');
-  if(page !== 'register' && regRunning) stopCam('reg');
+  if(page !== 'attendance' && attStream) stopCam('att');
+  if(page !== 'register' && regStream) stopCam('reg');
   // Render pages
   if(page==='dashboard') renderDashboard();
   if(page==='people') renderPeople();
   if(page==='records') renderRecords();
   if(page==='attendance') renderMarkedToday();
   if(page==='register') renderRecentlyRegistered();
+  if(document.body.classList.contains('attendance-signed-in')){
+    storeWorkspacePage(page);
+    if(moveFocus)panel.querySelector('h1').focus();
+  }
 }
 
 document.querySelectorAll('.nav-item').forEach(el=>{
   el.addEventListener('click', ()=> navigate(el.dataset.page));
 });
 
-function toggleSidebar(){
-  document.getElementById('sidebar').classList.toggle('open');
-  document.getElementById('overlay').classList.toggle('open');
+function setSidebarOpen(open){
+  const sidebar = document.getElementById('sidebar');
+  const toggle = document.getElementById('hamburger');
+  sidebar.classList.toggle('open',open);
+  document.getElementById('overlay').classList.toggle('open',open);
+  toggle.setAttribute('aria-expanded',String(open));
+  if(open)sidebar.querySelector('.nav-item.active').focus();
 }
-document.getElementById('overlay').addEventListener('click', ()=>{
-  document.getElementById('sidebar').classList.remove('open');
-  document.getElementById('overlay').classList.remove('open');
+function closeSidebar(){
+  setSidebarOpen(false);
+  document.getElementById('hamburger').focus();
+}
+function toggleSidebar(){
+  if(document.getElementById('sidebar').classList.contains('open'))closeSidebar();
+  else setSidebarOpen(true);
+}
+document.getElementById('overlay').addEventListener('click',closeSidebar);
+document.addEventListener('keydown',event=>{
+  if(event.key==='Escape' && document.getElementById('sidebar').classList.contains('open'))closeSidebar();
 });
+window.matchMedia('(max-width: 768px)').addEventListener('change',()=>setSidebarOpen(false));
 
 // ═══════════════════════════════════════
 //  DATE + SIDEBAR STATS
@@ -775,7 +880,7 @@ function renderDashboard(){
   const todayRecords = records.filter(r=>r.date===today).sort((a,b)=>b.time.localeCompare(a.time));
   const tl = document.getElementById('today-list');
   if(!todayRecords.length){
-    tl.innerHTML = '<div class="empty-state" style="padding:24px"><div class="empty-icon">📭</div><p>No attendance marked yet today</p></div>';
+    tl.innerHTML = '<div class="empty-state" style="padding:24px"><p>No attendance marked yet today</p></div>';
   } else {
     tl.innerHTML = todayRecords.map(r=>`
       <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);">
@@ -808,9 +913,85 @@ function renderDashboard(){
 // ═══════════════════════════════════════
 //  CAMERA HELPERS
 // ═══════════════════════════════════════
+let mirrorCameraPreview = true;
+try{
+  const savedMirrorPreference = localStorage.getItem('fa_flip_camera_preview');
+  if(savedMirrorPreference !== null)mirrorCameraPreview = savedMirrorPreference === 'true';
+}catch{}
+document.querySelectorAll('.cam-wrap').forEach(preview=>{
+  preview.classList.toggle('preview-flipped',mirrorCameraPreview);
+});
+
+let cameraFacing = 'user';
+let cameraStartInProgress = false;
+let cancelCameraMetadataWait;
+
+function setCameraFacing(facing){
+  cameraFacing = facing;
+  const label = facing === 'user' ? 'Use rear camera' : 'Use front camera';
+  document.getElementById('btn-switch-att').textContent = label;
+  document.getElementById('btn-switch-reg').textContent = label;
+}
+
+async function switchCamera(which){
+  if(cameraStartInProgress)return;
+  if(which === 'reg' && regRunning && document.getElementById('btn-capture').disabled){
+    toast('Wait for the current capture to finish before switching cameras.','info');
+    return;
+  }
+  const running = which === 'att' ? attRunning : regRunning;
+  setCameraFacing(cameraFacing === 'user' ? 'environment' : 'user');
+  if(!running)return;
+  stopCam(which);
+  if(which === 'att')await startAttendanceCam();
+  else await startRegCam();
+}
+
 async function getStream(){
-  const constraints = {video:{facingMode:'user',width:{ideal:640},height:{ideal:480}}};
-  return await navigator.mediaDevices.getUserMedia(constraints);
+  const size = {width:{ideal:640},height:{ideal:480}};
+  if(cameraFacing === 'environment'){
+    try{
+      return await navigator.mediaDevices.getUserMedia({video:{...size,facingMode:{exact:'environment'}}});
+    }catch(error){
+      if(!['NotFoundError','OverconstrainedError'].includes(error.name))throw error;
+      setCameraFacing('user');
+      toast('Rear camera unavailable. Using your default camera.','info');
+    }
+  }
+  return navigator.mediaDevices.getUserMedia({video:{...size,facingMode:{ideal:'user'}}});
+}
+
+async function openCamera(which, videoId, pageId){
+  if(cameraStartInProgress)return null;
+  cameraStartInProgress = true;
+  const toggle = document.getElementById('btn-switch-'+which);
+  toggle.disabled = true;
+  try{
+    const stream = await getStream();
+    if(!document.getElementById(pageId).classList.contains('active') ||
+       !document.body.classList.contains('attendance-signed-in')){
+      stream.getTracks().forEach(track=>track.stop());
+      return null;
+    }
+    const video = document.getElementById(videoId);
+    if(which === 'att')attStream = stream;
+    else regStream = stream;
+    const listeners = new AbortController();
+    try{
+      await new Promise(resolve=>{
+        cancelCameraMetadataWait = resolve;
+        video.addEventListener('loadedmetadata',resolve,{signal:listeners.signal});
+        video.srcObject = stream;
+      });
+    }finally{
+      listeners.abort();
+      cancelCameraMetadataWait = undefined;
+    }
+    return video.srcObject === stream ? stream : null;
+  }finally{
+    cameraStartInProgress = false;
+    toggle.disabled = false;
+  }
 }
 
 async function startAttendanceCam(){
@@ -819,10 +1000,7 @@ async function startAttendanceCam(){
   if(!document.getElementById('page-attendance').classList.contains('active'))return;
   if(!matcherReady){ toast('No registered faces found. Please register people first.','error'); return; }
   try{
-    attStream = await getStream();
-    const vid = document.getElementById('cam-video');
-    vid.srcObject = attStream;
-    await new Promise(r=>vid.onloadedmetadata=r);
+    if(!await openCamera('att','cam-video','page-attendance'))return;
     document.getElementById('btn-start-att').disabled = true;
     document.getElementById('btn-punch-in').style.display = 'inline-flex';
     document.getElementById('btn-punch-out').style.display = 'inline-flex';
@@ -880,7 +1058,7 @@ async function runAttendanceLoop(){
       if(match.label !== 'unknown'){
         const person = people.find(p=>p.id===match.label);
         const name = person ? person.name : match.label;
-        document.getElementById('rec-status').innerHTML = `<span style="color:var(--accent2);font-weight:700;">✓ Recognised: ${esc(name)}</span>`;
+        document.getElementById('rec-status').innerHTML = `<span style="color:var(--accent2);font-weight:700;">Recognised: ${esc(name)}</span>`;
         document.getElementById('cam-name-tag').style.display='block';
         document.getElementById('cam-name-tag').textContent = name;
 
@@ -911,7 +1089,7 @@ async function runAttendanceLoop(){
       } else {
         recognizedPersonId = null;
         resetCameraChallenge('Show a registered face to begin.');
-        document.getElementById('rec-status').innerHTML = `<span style="color:var(--warn);">⚠ Unknown face detected</span>`;
+        document.getElementById('rec-status').innerHTML = `<span style="color:var(--warn);">Unknown face detected</span>`;
         document.getElementById('cam-name-tag').style.display='none';
         resized.forEach(det=>{
           const box = det.detection.box;
@@ -936,6 +1114,7 @@ async function runAttendanceLoop(){
 }
 
 function stopCam(which){
+  if((which === 'att' ? attStream : regStream) && cancelCameraMetadataWait)cancelCameraMetadataWait();
   if(which==='att'){
     attCameraGeneration++;lastChallengeVideoTime=-1;
     resetCameraChallenge('Camera stopped. Start it to begin a new challenge.');
@@ -955,6 +1134,8 @@ function stopCam(which){
     if(regStream) regStream.getTracks().forEach(t=>t.stop());
     regStream=null; regRunning=false;
     document.getElementById('reg-video').srcObject=null;
+    const canvas = document.getElementById('reg-canvas');
+    canvas.getContext('2d').clearRect(0,0,canvas.width,canvas.height);
     document.getElementById('btn-start-reg').disabled=false;
     document.getElementById('btn-capture').disabled=true;
     document.getElementById('btn-stop-reg').disabled=true;
@@ -996,7 +1177,7 @@ async function manualPunch(type){
     await syncWithCloud(false);
     renderMarkedToday();
     updateSidebarStats();
-    toast(`🟢 Punch-IN recorded for ${person.name}`,'success');
+    toast(`Punch-IN recorded for ${person.name}`,'success');
   } else {
     if(!existing){
       toast(`${person.name} has not punched in today yet.`, 'error');
@@ -1015,7 +1196,7 @@ async function manualPunch(type){
     await syncWithCloud(false);
     renderMarkedToday();
     updateSidebarStats();
-    toast(`🔴 Punch-OUT recorded for ${person.name} (${existing.hours} hrs - ${existing.status})`,'success');
+    toast(`Punch-OUT recorded for ${person.name} (${existing.hours} hrs - ${existing.status})`,'success');
   }
 }
 function getSettings(){
@@ -1038,6 +1219,11 @@ function saveSettings(){
 }
 
 window.addEventListener('DOMContentLoaded',()=>{
+ const date = document.getElementById('filter-date');
+ if(!date.value)date.value = todayStr();
+ date.addEventListener('click',()=>{
+   try{date.showPicker?.();}catch{} // Keep the native picker available on browsers without showPicker.
+ });
  const settings=getSettings();
  document.getElementById('cfg-fullday').value=settings.fullDayHours;
  document.getElementById('cfg-halfday').value=settings.halfDayHours;
@@ -1100,7 +1286,7 @@ async function markAttendance(personId, person){
     await syncWithCloud(false);
     renderMarkedToday();
     updateSidebarStats();
-    toast(`🟢 Punch-IN recorded for ${rec.name} at ${nowStr}`,'success');
+    toast(`Punch-IN recorded for ${rec.name} at ${nowStr}`,'success');
   }
 
   // flash the cam wrap
@@ -1141,10 +1327,7 @@ async function startRegCam(){
   try{await ensureFaceModels();}catch(error){toast(error.message,'error');return;}
   if(!document.getElementById('page-register').classList.contains('active'))return;
   try{
-    regStream = await getStream();
-    const vid = document.getElementById('reg-video');
-    vid.srcObject = regStream;
-    await new Promise(r=>vid.onloadedmetadata=r);
+    if(!await openCamera('reg','reg-video','page-register'))return;
     document.getElementById('btn-start-reg').disabled=true;
     document.getElementById('btn-capture').disabled=false;
     document.getElementById('btn-stop-reg').disabled=false;
@@ -1172,7 +1355,7 @@ async function captureAndRegister(){
       .withFaceDescriptor();
 
     if(!det){
-      statusEl.textContent = '❌ No face detected. Try again.';
+      statusEl.textContent = 'No face detected. Try again.';
       document.getElementById('btn-capture').disabled=false;
       return;
     }
@@ -1201,7 +1384,7 @@ async function captureAndRegister(){
     const b=resized.detection.box;
     ctx.strokeRect(b.x,b.y,b.width,b.height);
 
-    statusEl.textContent = `✅ ${name} registered successfully!`;
+    statusEl.textContent = `${name} registered successfully!`;
     document.getElementById('reg-name').value='';
     document.getElementById('reg-role').value='';
     document.getElementById('reg-id').value='';
@@ -1211,7 +1394,7 @@ async function captureAndRegister(){
       c2.getContext('2d').clearRect(0,0,9999,9999);
     },2000);
   } catch(e){
-    statusEl.textContent = '❌ Error: '+e.message;
+    statusEl.textContent = 'Error: '+e.message;
     toast('Registration failed: '+e.message,'error');
   }
   document.getElementById('btn-capture').disabled=false;
@@ -1236,15 +1419,22 @@ function renderRecentlyRegistered(){
 //  PEOPLE PAGE
 // ═══════════════════════════════════════
 function renderPeople(){
-  const q = (document.getElementById('search-people').value||'').toLowerCase();
+  const search = document.getElementById('search-people');
+  const q = search.value.trim().toLowerCase();
+  document.getElementById('people-clear').hidden = !search.value;
   const filtered = people.filter(p=>
     p.name.toLowerCase().includes(q) ||
     (p.role||'').toLowerCase().includes(q) ||
     (p.empId||'').toLowerCase().includes(q)
   );
   const grid = document.getElementById('people-grid');
+  const summary = document.getElementById('people-count');
+  const count = q ? `${filtered.length} of ${people.length} people` : `${people.length} registered`;
+  if(summary.textContent!==count)summary.textContent=count;
   if(!filtered.length){
-    grid.innerHTML='<div class="empty-state"><div class="empty-icon">👥</div><p>No people found.</p></div>';
+    grid.innerHTML = q
+      ? '<div class="empty-state"><p>No matching registrations. Try another name, role, or ID.</p></div>'
+      : '<div class="empty-state"><p>No one is registered yet. Use Register a person to add the first registration.</p></div>';
     return;
   }
   const today = todayStr();
@@ -1258,11 +1448,18 @@ function renderPeople(){
       <div class="person-role">${esc(p.role||'No role')} ${p.empId?'• '+esc(p.empId):''}</div>
       <div class="admin-only" style="margin-top:8px;font-size:.72rem;color:var(--muted);">${totalDays} day(s) attended</div>
       <div class="admin-only" style="margin-top:6px;">${presentToday?'<span class="chip chip-green">Present Today</span>':'<span class="chip chip-red">Not Yet Today</span>'}</div>
-      <div class="person-actions">
-        <button class="btn btn-ghost" style="padding:5px 12px;font-size:.75rem;" onclick="deletePerson('${p.id}')">🗑 Remove</button>
+      <div class="person-actions admin-only">
+        <button class="btn btn-ghost" style="padding:5px 12px;font-size:.75rem;" onclick="deletePerson('${p.id}')">Remove</button>
       </div>
     </div>`;
   }).join('');
+}
+
+function clearPeopleSearch(){
+  const search = document.getElementById('search-people');
+  search.value = '';
+  renderPeople();
+  search.focus();
 }
 
 function deletePerson(id){
@@ -1278,22 +1475,28 @@ function deletePerson(id){
 //  RECORDS PAGE
 // ═══════════════════════════════════════
 function renderRecords(){
-  const fdate = document.getElementById('filter-date').value;
-  let filtered = [...records];
-  if(fdate) filtered = filtered.filter(r=>r.date===fdate);
+  const date = document.getElementById('filter-date');
+  const today = todayStr();
+  if(!date.value)date.value = today;
+  const filtered = records.filter(r=>r.date===date.value);
   filtered.sort((a,b)=>(b.date+b.time).localeCompare(a.date+a.time));
 
   const tbody = document.getElementById('records-tbody');
   const empty = document.getElementById('records-empty');
   const footer = document.getElementById('records-footer');
 
+  document.getElementById('records-today').hidden = date.value === today;
+  document.getElementById('export-records').disabled = !records.length;
+  document.getElementById('records-table').hidden = !filtered.length;
+  empty.style.display = filtered.length ? 'none' : 'block';
   if(!filtered.length){
-    tbody.innerHTML=''; empty.style.display='block';
-    footer.textContent='';
-    return;
+    tbody.replaceChildren();
+    const message = 'No attendance records for this date. Choose another date to view its records.';
+    if(empty.firstElementChild.textContent!==message)empty.firstElementChild.textContent=message;
   }
-  empty.style.display='none';
-  footer.textContent = `Showing ${filtered.length} record(s)`;
+  const count = `Showing ${filtered.length} of ${records.length} records`;
+  if(footer.textContent!==count)footer.textContent=count;
+  if(!filtered.length)return;
 
   tbody.innerHTML = filtered.map(r=>{
     const st = r.punchOut ? getAttendanceStatus(r.hours) : {label: r.status || 'In Progress', class: 'chip-purple'};
@@ -1316,9 +1519,11 @@ function renderRecords(){
   }).join('');
 }
 
-function clearFilter(){
-  document.getElementById('filter-date').value='';
+function showTodayRecords(){
+  const date = document.getElementById('filter-date');
+  date.value=todayStr();
   renderRecords();
+  date.focus();
 }
 
 function exportCSV(){
@@ -1350,10 +1555,9 @@ function exportCSV(){
 //  TOAST
 // ═══════════════════════════════════════
 function toast(msg, type='info'){
-  const icons = {success:'✅', error:'❌', info:'ℹ️'};
   const el = document.createElement('div');
   el.className = 'toast '+type;
-  el.innerHTML = `<span>${icons[type]||''}</span><span>${esc(msg)}</span>`;
+  el.textContent = msg;
   document.getElementById('toast-container').appendChild(el);
   setTimeout(()=>{ el.style.opacity='0'; el.style.transition='opacity .4s'; setTimeout(()=>el.remove(), 400); }, 3500);
 }
@@ -1404,6 +1608,6 @@ if(location.protocol === 'file:'){
     </div>
   </main>
 </div>
-<script src="../cloud.js?v=a5994fbf44d1"></script>
+<script src="../cloud.js?v=171d8c06f423"></script>
 </body>
 </html>

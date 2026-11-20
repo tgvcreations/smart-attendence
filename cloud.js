@@ -1,13 +1,18 @@
 'use strict';
 const CLOUD_URL = 'https://zrkpyboeworyvpqmokmu.supabase.co';
 const CLOUD_KEY = 'sb_publishable_EKDreBLKv-eFwcQFmFM9fw_EKgWr_VL';
+const ATTENDANCE_OWNER_ID = '688d9d01-4e80-4d72-a5df-cebd8a234f05';
 let cloudSession = null, cloudMember = null, cloudRefresh = null, cloudSync = null;
 let accountGeneration = 0, punching = false;
+let geofenceDirty = false;
+let autoLocationRetryAfter = 0;
 let sharedHours={fullDayHours:8,halfDayHours:4};
 const stationPunches=new Set();
 function setAccountGate(visible){
+ const opening = !visible && !document.body.classList.contains('attendance-signed-in');
  document.getElementById('account-gate').style.display=visible?'flex':'none';
  document.body.classList.toggle('attendance-signed-in',!visible);
+ if(opening)restoreWorkspacePage(cloudMember.user_id);
  const activePage=document.querySelector('.nav-item.active')?.dataset.page;
  document.title=visible?'Attendance workspace | FaceAttend':(pageTitles[activePage]||'Attendance workspace')+' | FaceAttend';
 }
@@ -60,7 +65,14 @@ async function cloudSignUp(){
  }catch(e){accountMessage(e.message);}
 }
 async function cloudSignOut(){
- const token=cloudSession?.access_token; accountGeneration++;storeSession(null);cloudMember=null;stationPunches.clear();applyAdminAccess();
+ const token=cloudSession?.access_token;
+ geofenceDirty = false;
+ autoLocationRetryAfter = 0;
+ document.getElementById('geofence-form').reset();
+ document.getElementById('geofence-fields').disabled = true;
+ document.getElementById('geofence-status').textContent = 'Loading geofence settings…';
+ storeWorkspacePage(null);
+ accountGeneration++;storeSession(null);cloudMember=null;stationPunches.clear();applyAdminAccess();
  stopCam('att');stopCam('reg');people=[];records=[];buildMatcher();renderDashboard();renderPeople();renderRecords();renderMarkedToday();renderRecentlyRegistered();
  document.getElementById('members-list').replaceChildren();document.getElementById('admin-members').style.display='none';
  setAccountGate(true);accountMessage('Signed out.');
@@ -90,22 +102,153 @@ function syncWithCloud(notify=false){
     await renderMembers();
     const hours=await cloudRequest('attendance_settings?id=eq.1&select=*');
     if(generation!==accountGeneration)return;
-    if(hours[0]){sharedHours={fullDayHours:Number(hours[0].full_day_hours),halfDayHours:Number(hours[0].half_day_hours)};document.getElementById('cfg-fullday').value=sharedHours.fullDayHours;document.getElementById('cfg-halfday').value=sharedHours.halfDayHours;renderRecords();}
+    if(hours[0]){renderGeofence(hours[0]);sharedHours={fullDayHours:Number(hours[0].full_day_hours),halfDayHours:Number(hours[0].half_day_hours)};document.getElementById('cfg-fullday').value=sharedHours.fullDayHours;document.getElementById('cfg-halfday').value=sharedHours.halfDayHours;renderRecords();}
    }
    if(notify)toast('Shared data is up to date.','success');
   }catch(e){document.getElementById('cloud-status').textContent='Sync failed: '+e.message;if(notify){accountMessage(e.message);toast(e.message,'error');}}
  })().finally(()=>cloudSync=null);
  return cloudSync;
 }
+const geofenceForm = document.getElementById('geofence-form');
+geofenceForm.addEventListener('input',()=>{geofenceDirty=true;});
+
+function renderGeofence(settings){
+ if(geofenceDirty)return;
+ document.getElementById('geofence-enabled').checked = settings.geofence_enabled === true;
+ document.getElementById('geofence-latitude').value = settings.geofence_latitude ?? '';
+ document.getElementById('geofence-longitude').value = settings.geofence_longitude ?? '';
+ document.getElementById('geofence-radius').value = settings.geofence_radius_m ?? '';
+ document.getElementById('geofence-fields').disabled = false;
+ const status = settings.geofence_enabled ? 'Geofence enabled.' : 'Geofence disabled.';
+ const message = document.getElementById('geofence-status');
+ if(message.textContent!==status)message.textContent=status;
+}
+
+function getAttendanceLocation(){
+ return new Promise((resolve,reject)=>{
+  if(!navigator.geolocation){reject(new Error('Location is unavailable. Open FaceAttend over HTTPS on a device with location services.'));return;}
+  navigator.geolocation.getCurrentPosition(({coords})=>resolve(coords),error=>{
+   const message = error.code === 1 ? 'Allow location access in your browser and try again.'
+    : 'Could not get your location. Check your device location settings and try again.';
+   reject(new Error(message));
+  },{enableHighAccuracy:true,maximumAge:0,timeout:12000});
+ });
+}
+
+async function useCurrentGeofenceLocation(button){
+ if(!isAttendanceAdmin())return;
+ const generation=accountGeneration;
+ const status=document.getElementById('geofence-status');
+ button.disabled=true;
+ status.textContent='Getting your location…';
+ try{
+  const {latitude,longitude,accuracy}=await getAttendanceLocation();
+  if(generation!==accountGeneration)return;
+  document.getElementById('geofence-latitude').value=latitude.toFixed(6);
+  document.getElementById('geofence-longitude').value=longitude.toFixed(6);
+  geofenceDirty=true;
+  status.textContent='Center filled in. Location accuracy is about '+Math.ceil(accuracy)+' m. Set the radius and save.';
+ }catch(error){
+  if(generation===accountGeneration)status.textContent=error.message;
+ }finally{button.disabled=false;}
+}
+
+async function saveGeofence(event){
+ event.preventDefault();
+ if(!isAttendanceAdmin())return;
+ const fields=document.getElementById('geofence-fields');
+ const status=document.getElementById('geofence-status');
+ const enabled=document.getElementById('geofence-enabled').checked;
+ const values=['latitude','longitude','radius'].map(key=>document.getElementById('geofence-'+key).value);
+ if(enabled && values.some(value=>value==='')){
+  status.textContent='Enter a center latitude, longitude, and radius before enabling the geofence.';
+  return;
+ }
+ const [latitude,longitude,radius]=values.map(value=>value===''?null:Number(value));
+ const generation=accountGeneration;
+ geofenceDirty=true;
+ fields.disabled=true;
+ status.textContent='Saving geofence…';
+ try{
+  const rows=await cloudRequest('attendance_settings?id=eq.1',{method:'PATCH',body:JSON.stringify({
+   geofence_enabled:enabled,geofence_latitude:latitude,geofence_longitude:longitude,geofence_radius_m:radius
+  })});
+  if(generation!==accountGeneration)return;
+  if(!rows?.length)throw new Error('Geofence settings could not be saved.');
+  geofenceDirty=false;
+  renderGeofence(rows[0]);
+ }catch(error){
+  if(generation===accountGeneration)status.textContent=error.message;
+ }finally{
+  if(generation===accountGeneration)fields.disabled=false;
+ }
+}
+
 async function renderMembers(){
- const generation=accountGeneration;const members=await cloudRequest('attendance_members?select=*&order=created_at.desc');if(generation!==accountGeneration)return;
- const container=document.getElementById('members-list');container.replaceChildren();
- for(const member of members){const row=document.createElement('div');row.style.padding='10px 0';const label=document.createElement('span');label.textContent=member.email+' — '+(member.is_admin?'Administrator':member.approved?'Approved':'Pending');row.append(label);
- if(!member.is_admin){const button=document.createElement('button');button.className='btn btn-ghost';button.textContent=member.approved?'Revoke':'Approve';button.onclick=async()=>{button.disabled=true;try{await cloudRequest('attendance_members?user_id=eq.'+member.user_id,{method:'PATCH',body:JSON.stringify({approved:!member.approved})});await renderMembers();}catch(e){toast(e.message,'error');button.disabled=false;}};row.append(button);}container.append(row);}
+ const generation = accountGeneration;
+ const members = await cloudRequest('attendance_members?select=*&order=created_at.desc');
+ if(generation !== accountGeneration)return;
+ const container = document.getElementById('members-list');
+ const canGrantAdmin = isAttendanceAdmin() && cloudMember.user_id === ATTENDANCE_OWNER_ID;
+ const rows = members.map(member=>{
+  const row = document.createElement('div');
+  row.className = 'member-row';
+
+  const label = document.createElement('span');
+  const status = member.user_id === ATTENDANCE_OWNER_ID ? 'Owner'
+    : member.is_admin ? 'Administrator' : member.approved ? 'Approved' : 'Pending';
+  label.textContent = member.email + ' — ' + status;
+  row.append(label);
+
+  if(!member.is_admin){
+   const actions = document.createElement('div');
+   actions.className = 'member-actions';
+   const approval = document.createElement('button');
+   approval.type = 'button';
+   approval.className = 'btn btn-ghost';
+   approval.textContent = member.approved ? 'Revoke approval' : 'Approve';
+   approval.onclick = ()=>updateMemberAccess(member.user_id, {approved:!member.approved}, actions);
+   actions.append(approval);
+
+   if(canGrantAdmin){
+    const grant = document.createElement('button');
+    grant.type = 'button';
+    grant.className = 'btn btn-ghost';
+    grant.textContent = 'Make administrator';
+    grant.onclick = ()=>{
+     if(!confirm('Grant administrator access to '+member.email+'?'))return;
+     return updateMemberAccess(member.user_id, {approved:true,is_admin:true}, actions);
+    };
+    actions.append(grant);
+   }
+   row.append(actions);
+  }
+  return row;
+ });
+ container.replaceChildren(...rows);
+}
+
+async function updateMemberAccess(userId, changes, actions){
+ const generation = accountGeneration;
+ const buttons = actions.querySelectorAll('button');
+ buttons.forEach(button=>button.disabled=true);
+ try{
+  const updated = await cloudRequest('attendance_members?user_id=eq.'+encodeURIComponent(userId), {
+   method:'PATCH',body:JSON.stringify(changes)
+  });
+  if(generation !== accountGeneration)return;
+  if(!updated?.length)throw new Error('The account could not be updated.');
+  await renderMembers();
+  if(generation === accountGeneration && changes.is_admin)toast('Administrator access granted.','success');
+ }catch(error){
+  if(generation === accountGeneration)toast(error.message,'error');
+ }finally{
+  buttons.forEach(button=>button.disabled=false);
+ }
 }
 // Any approved account can operate a shared attendance station.
 async function markAttendance(personId,person){
- if(!person||!cloudMember?.approved||stationPunches.has(todayStr()+':'+personId)||records.some(r=>r.personId===personId&&r.date===todayStr()))return;
+ if(Date.now()<autoLocationRetryAfter||!person||!cloudMember?.approved||stationPunches.has(todayStr()+':'+personId)||records.some(r=>r.personId===personId&&r.date===todayStr()))return;
  await punchCloud('in',person);
 }
 async function manualPunch(direction){
@@ -118,8 +261,33 @@ async function punchCloud(direction,person){
  if(!attRunning||recognizedPersonId!==person?.id||document.hidden||!attendanceChallenge.consume(person.id)){
   toast('Complete the camera challenge for this person first.','error');renderCameraChallenge();return;
  }
- renderCameraChallenge();punching=true;
- try{await cloudRequest('rpc/attendance_punch',{method:'POST',body:JSON.stringify({p_direction:direction,p_person_id:person.id})});stationPunches.add(todayStr()+':'+person.id);await syncWithCloud();toast((direction==='in'?'Punch-in':'Punch-out')+' saved for '+person.name,'success');}catch(e){toast(e.message,'error');}finally{punching=false;}
+ renderCameraChallenge();
+ punching=true;
+ const generation=accountGeneration;
+ const cameraGeneration=attCameraGeneration;
+ let locationRequired=false;
+ try{
+  locationRequired=await cloudRequest('rpc/attendance_geofence_required');
+  if(generation!==accountGeneration || cameraGeneration!==attCameraGeneration)return;
+  const payload={p_direction:direction,p_person_id:person.id,p_latitude:null,p_longitude:null,p_accuracy_m:null};
+  if(locationRequired){
+   toast('Checking your location…','info');
+   const {latitude,longitude,accuracy}=await getAttendanceLocation();
+   Object.assign(payload,{p_latitude:latitude,p_longitude:longitude,p_accuracy_m:accuracy});
+  }
+  if(generation!==accountGeneration || cameraGeneration!==attCameraGeneration ||
+     !attRunning || recognizedPersonId!==person.id || document.hidden)return;
+  await cloudRequest('rpc/attendance_punch',{method:'POST',body:JSON.stringify(payload)});
+  if(generation!==accountGeneration)return;
+  stationPunches.add(todayStr()+':'+person.id);
+  await syncWithCloud();
+  if(generation===accountGeneration)toast((direction==='in'?'Punch-in':'Punch-out')+' saved for '+person.name,'success');
+ }catch(error){
+  if(generation===accountGeneration && cameraGeneration===attCameraGeneration){
+   if(locationRequired)autoLocationRetryAfter=Date.now()+20000;
+   toast(error.message,'error');
+  }
+ }finally{punching=false;}
 }
 async function captureAndRegister(){
  const name=document.getElementById('reg-name').value.trim();const status=document.getElementById('capture-status');const button=document.getElementById('btn-capture');
