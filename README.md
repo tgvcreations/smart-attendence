@@ -11,7 +11,7 @@ Region: Mumbai (ap-south-1)
 4. Other users create and confirm their accounts. The administrator approves them under Settings > User Approvals.
 5. Each approved user registers their own face once. They can then sign in on another device and mark attendance with that device's camera.
 
-Shared data refreshes every 10 seconds. An internet connection is required to save registration or attendance. Automatic recognition punches in; Punch Out ends attendance. Any approved account can operate a shared attendance station. Attendance is saved for the recognized person, regardless of which approved account is signed in. Dates and record times use Asia/Kolkata.
+Shared data refreshes every 10 seconds. An internet connection is required to save registration or attendance. Choose Punch In or Punch Out before opening the camera. After face verification and the raise-hand challenge, FaceAttend submits the selected action. Each registered person can punch in once and punch out once per day. Both require the device to be inside the configured geofence when it is enabled. Any approved account can operate a shared attendance station. Attendance is saved for the recognized person, regardless of which approved account is signed in. Dates and record times use Asia/Kolkata.
 
 Old browser-only/JSONBin registrations are not automatically copied. Users register once in the new account-based system. No browser master key is required. cloud.js contains only a publishable API key; database access is enforced through row-level security.
 

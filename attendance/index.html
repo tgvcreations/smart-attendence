@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Attendance workspace | FaceAttend</title>
 <meta name="description" content="Sign in to FaceAttend to register people, mark attendance, and review or export attendance records.">
-<link rel="icon" href="../favicon.ico" sizes="any">
+<link rel="icon" href="../favicon.ico?v=4e721737d2" sizes="any">
 <meta name="robots" content="noindex">
 <link rel="canonical" href="https://tgvcreations.github.io/smart-attendence/attendance/">
 <meta property="og:title" content="Attendance workspace | FaceAttend">
@@ -290,9 +290,6 @@ tr:hover td{background:var(--bg);}
   .stats-grid{grid-template-columns:1fr;}
 }
 
-/* ── Recognition result flash ── */
-@keyframes flashGreen{0%{box-shadow:0 0 0 0 rgba(72,207,173,.7)}70%{box-shadow:0 0 0 14px rgba(72,207,173,0)}100%{box-shadow:none}}
-.flash-success{animation:flashGreen .6s ease;}
 body:not(.attendance-signed-in) :is(#sidebar,#topbar,#main,#overlay){visibility:hidden;}
 
 a{color:var(--accent);text-underline-offset:.24em;}
@@ -300,7 +297,6 @@ a{color:var(--accent);text-underline-offset:.24em;}
 #sidebar-logo{color:var(--text);text-decoration:none;}
 .nav-item{width:100%;border:0;background:none;font-family:inherit;text-align:left;}
 #sidebar-footer .btn{margin-bottom:.6rem;}
-.breadcrumbs{color:var(--muted);font-size:.875rem;margin-bottom:1rem;}
 .section-header{padding-block:1rem 1.5rem;border-bottom:1px solid var(--border);align-items:flex-end;}
 .page{max-width:1080px;}
 .stat-card{display:flex;flex-direction:column;gap:.35rem;}
@@ -344,8 +340,12 @@ a{color:var(--accent);text-underline-offset:.24em;}
 @media(max-width:480px){#toast-container{left:12px;right:12px;bottom:12px;}.toast{max-width:100%;}}
 .member-row{display:flex;align-items:center;justify-content:space-between;gap:.5rem 1rem;flex-wrap:wrap;padding:.65rem 0;border-bottom:1px solid var(--border);overflow-wrap:anywhere;}
 .member-actions{display:flex;flex-wrap:wrap;gap:.5rem;}
+#ownership-dialog{margin:auto;width:min(420px,calc(100% - 2rem));background:var(--surface);color:var(--text);}
+#ownership-dialog::backdrop{background:rgb(17 35 41 / .48);}
+#ownership-dialog p{margin-block:.6rem;overflow-wrap:anywhere;}
+#ownership-dialog fieldset{border:0;min-width:0;}
+#ownership-message:empty{display:none;}
 </style>
-<script type="application/ld+json">{"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Home", "item": "https://tgvcreations.github.io/smart-attendence/"}, {"@type": "ListItem", "position": 2, "name": "Attendance workspace", "item": "https://tgvcreations.github.io/smart-attendence/attendance/"}]}</script>
 </head>
 <body>
 
@@ -373,7 +373,7 @@ a{color:var(--accent);text-underline-offset:.24em;}
 <!-- Sidebar -->
 <aside id="sidebar">
   <a id="sidebar-logo" href="../">
-    <img class="logo-icon" src="../favicon.ico" width="32" height="32" alt="">
+    <img class="logo-icon" src="../assets/faceattend-logo.png" width="32" height="32" alt="">
     <div><strong>FaceAttend</strong><small>Attendance workspace</small></div>
   </a>
   <nav aria-label="Workspace">
@@ -399,7 +399,11 @@ a{color:var(--accent);text-underline-offset:.24em;}
       <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
       Records
     </button>
-    <button type="button" class="nav-item admin-only" data-page="settings">
+    <button type="button" class="nav-item admin-only" data-page="administration">
+      <svg aria-hidden="true" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linejoin="round" d="M12 3 4 6v5c0 5 3 8 8 10 5-2 8-5 8-10V6l-8-3Z"/><path stroke-linecap="round" stroke-linejoin="round" d="m9 12 2 2 4-4"/></svg>
+      Administration
+    </button>
+    <button type="button" class="nav-item" data-page="settings">
       <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
       Settings
     </button>
@@ -427,7 +431,6 @@ a{color:var(--accent);text-underline-offset:.24em;}
 
 <!-- Main -->
 <main id="main">
-  <nav class="breadcrumbs" aria-label="Breadcrumb"><a href="../">Home</a> / <span aria-current="page">Attendance workspace</span></nav>
 
   <!-- DASHBOARD -->
   <div class="page active admin-only" id="page-dashboard">
@@ -478,14 +481,20 @@ a{color:var(--accent);text-underline-offset:.24em;}
   <!-- MARK ATTENDANCE -->
   <div class="page" id="page-attendance">
     <div class="section-header">
-      <div><h1 tabindex="-1">Mark Attendance</h1><p>Any approved account can mark attendance for a registered face. Complete the raise-hand challenge to punch in; repeat it before Punch Out.</p></div>
+      <div><h1 tabindex="-1">Mark Attendance</h1><p>Choose Punch In or Punch Out to start the camera. FaceAttend verifies your face and checks your location when a geofence is enabled.</p></div>
     </div>
     <div class="alert alert-warn">
-      <span>Make sure you are in a well-lit area and looking directly at the camera. Each person is marked once per day.</span>
+      <span>Make sure you are in a well-lit area and looking directly at the camera. Each person can punch in once and punch out once per day.</span>
     </div>
     <div style="display:flex;gap:20px;flex-wrap:wrap;">
       <div style="flex:1;min-width:280px;">
-        <div class="cam-wrap" id="att-cam-wrap">
+        <div class="ctrl-row" style="margin:0 0 14px;">
+          <button type="button" class="btn btn-primary" id="btn-punch-in" onclick="startAttendanceCam('in')">Punch In</button>
+          <button type="button" class="btn btn-ghost" id="btn-punch-out" onclick="startAttendanceCam('out')">Punch Out</button>
+          <button type="button" class="btn btn-ghost" id="btn-stop-att" onclick="stopCam('att')" hidden>Cancel</button>
+          <button type="button" id="btn-switch-att" class="btn btn-ghost" onclick="switchCamera('att')">Use rear camera</button>
+        </div>
+        <div class="cam-wrap" id="att-cam-wrap" hidden>
           <video id="cam-video" autoplay muted playsinline></video>
           <canvas id="cam-canvas"></canvas>
           <div class="cam-overlay">
@@ -497,22 +506,13 @@ a{color:var(--accent);text-underline-offset:.24em;}
           <div id="scan-line"></div>
           <div class="name-tag" id="cam-name-tag" style="display:none;"></div>
         </div>
-        <div class="ctrl-row">
-          <button class="btn btn-primary" id="btn-start-att" onclick="startAttendanceCam()">
-            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-            Start Camera
-          </button>
-          <button class="btn btn-primary" id="btn-punch-in" style="display:none" onclick="manualPunch('in')">Punch In</button>
-          <button class="btn btn-danger" id="btn-punch-out" style="display:none" onclick="manualPunch('out')">Punch Out</button>
-          <button class="btn btn-ghost" id="btn-stop-att" onclick="stopCam('att')" disabled>Stop</button>
-          <button type="button" id="btn-switch-att" class="btn btn-ghost" onclick="switchCamera('att')">Use rear camera</button>
-        </div>
+
       </div>
       <div style="flex:1;min-width:220px;">
         <div class="card" style="margin-bottom:16px;">
           <div class="card-title">Recognition Status</div>
-          <div id="liveness-status" role="status" aria-live="polite" style="margin-top:12px;color:var(--warn);font-weight:600;">Complete the raise-hand challenge before marking attendance.</div>
-          <div id="rec-status" style="margin-top:12px;color:var(--muted);font-size:.88rem;">Camera not started</div>
+          <div id="liveness-status" role="status" aria-live="polite" style="margin-top:12px;color:var(--warn);font-weight:600;">Choose a punch option to begin.</div>
+          <div id="rec-status" style="margin-top:12px;color:var(--muted);font-size:.88rem;" role="status">Camera off</div>
           <div class="progress-bar" style="margin-top:10px;"><div class="progress-fill" id="conf-bar" style="width:0%"></div></div>
           <div style="font-size:.72rem;color:var(--muted);margin-top:4px;">Confidence: <span id="conf-val">—</span></div>
         </div>
@@ -640,12 +640,31 @@ a{color:var(--accent);text-underline-offset:.24em;}
   </div>
 
   <!-- SETTINGS -->
-  <div class="page admin-only" id="page-settings">
+  <div class="page" id="page-settings">
     <div class="section-header">
-      <div><h1 tabindex="-1">Working Hours & Settings</h1><p>Configure thresholds for Full Day and Half Day attendance status</p></div>
+      <div><h1 tabindex="-1">Settings</h1></div>
+    </div>
+    <section class="card" style="max-width:500px;margin-bottom:20px;" aria-labelledby="password-title">
+      <h2 id="password-title" class="card-title">Change password</h2>
+      <form id="password-form" onsubmit="changeAccountPassword(event)">
+        <fieldset style="border:0;min-width:0;">
+          <div class="form-group"><label for="current-password">Current password</label><input id="current-password" type="password" autocomplete="current-password" required></div>
+          <div class="form-group"><label for="new-password">New password</label><input id="new-password" type="password" autocomplete="new-password" minlength="8" required></div>
+          <div class="form-group"><label for="confirm-password">Confirm new password</label><input id="confirm-password" type="password" autocomplete="new-password" minlength="8" required></div>
+          <button class="btn btn-primary" type="submit">Change password</button>
+        </fieldset>
+        <p id="password-status" role="status" style="margin-top:.65rem;color:var(--muted);"></p>
+      </form>
+    </section>
+  </div>
+
+  <!-- ADMINISTRATION -->
+  <div class="page admin-only" id="page-administration">
+    <div class="section-header">
+      <div><h1 tabindex="-1">Administration</h1><p>Manage working hours, attendance location, and user access.</p></div>
     </div>
     <div class="card" style="max-width:500px;margin-bottom:20px;">
-      <div class="card-title" style="margin-bottom:14px;">Attendance Thresholds</div>
+      <h2 class="card-title" style="margin-bottom:14px;">Working Hours</h2>
       <div class="form-group">
         <label>Full Day Minimum Hours</label>
         <input type="number" id="cfg-fullday" value="8" min="1" max="24" step="0.5"/>
@@ -657,12 +676,6 @@ a{color:var(--accent);text-underline-offset:.24em;}
         <div style="font-size:.72rem;color:var(--muted);margin-top:4px;">Hours required to mark as Half Day (below this is Short Hours)</div>
       </div>
       <button class="btn btn-primary" onclick="saveSettings()">Save Settings</button>
-    </div>
-    <div class="card" style="max-width:700px;margin-bottom:20px;">
-      <div class="card-title">Shared Database</div>
-      <p id="cloud-status">Connecting to Supabase…</p>
-      <button class="btn btn-ghost" onclick="syncWithCloud(true)">Refresh</button>
-      <button class="btn btn-ghost" onclick="cloudSignOut()">Sign Out</button>
     </div>
     <section class="card" style="max-width:700px;margin-bottom:20px;" aria-labelledby="geofence-title">
       <h2 id="geofence-title" class="card-title">Attendance Geofence</h2>
@@ -683,8 +696,8 @@ a{color:var(--accent);text-underline-offset:.24em;}
         <p id="geofence-status" role="status" style="color:var(--muted);">Loading geofence settings…</p>
       </form>
     </section>
-    <div class="card" id="admin-members" style="display:none">
-      <div class="card-title">User Approvals</div>
+    <div class="card" id="admin-members">
+      <h2 class="card-title">User Approvals</h2>
       <div id="members-list"></div>
     </div>
   </div>
@@ -694,7 +707,7 @@ a{color:var(--accent);text-underline-offset:.24em;}
 <!-- Toast container -->
 <div id="toast-container" role="status" aria-live="polite"></div>
 
-<script src="../liveness.js?v=7c5d2ed99921"></script>
+<script src="../liveness.js?v=5af3da38c104"></script>
 <script>
 // ═══════════════════════════════════════
 //  DATA LAYER
@@ -767,9 +780,9 @@ function buildMatcher(){
 // ═══════════════════════════════════════
 //  NAVIGATION
 // ═══════════════════════════════════════
-const pageTitles = {dashboard:'Dashboard',attendance:'Mark Attendance',register:'Register Person',people:'People',records:'Records',settings:'Settings'};
+const pageTitles = {dashboard:'Dashboard',attendance:'Mark Attendance',register:'Register Person',people:'People',records:'Records',administration:'Administration',settings:'Settings'};
 
-const adminPages = new Set(['dashboard','records','settings']);
+const adminPages = new Set(['dashboard','records','administration']);
 
 function storeWorkspacePage(page){
   if(page && !cloudMember?.user_id)return;
@@ -801,7 +814,7 @@ function navigate(page, moveFocus = true){
   // Close sidebar on mobile
   setSidebarOpen(false);
   // Stop cameras when leaving
-  if(page !== 'attendance' && attStream) stopCam('att');
+  if(page !== 'attendance' && attendanceDirection) stopCam('att');
   if(page !== 'register' && regStream) stopCam('reg');
   // Render pages
   if(page==='dashboard') renderDashboard();
@@ -922,6 +935,7 @@ document.querySelectorAll('.cam-wrap').forEach(preview=>{
   preview.classList.toggle('preview-flipped',mirrorCameraPreview);
 });
 
+let attendanceDirection = null;
 let cameraFacing = 'user';
 let cameraStartInProgress = false;
 let cancelCameraMetadataWait;
@@ -934,7 +948,7 @@ function setCameraFacing(facing){
 }
 
 async function switchCamera(which){
-  if(cameraStartInProgress)return;
+  if(cameraStartInProgress || (which === 'att' && punching))return;
   if(which === 'reg' && regRunning && document.getElementById('btn-capture').disabled){
     toast('Wait for the current capture to finish before switching cameras.','info');
     return;
@@ -942,8 +956,9 @@ async function switchCamera(which){
   const running = which === 'att' ? attRunning : regRunning;
   setCameraFacing(cameraFacing === 'user' ? 'environment' : 'user');
   if(!running)return;
+  const direction = attendanceDirection;
   stopCam(which);
-  if(which === 'att')await startAttendanceCam();
+  if(which === 'att')await startAttendanceCam(direction);
   else await startRegCam();
 }
 
@@ -961,14 +976,14 @@ async function getStream(){
   return navigator.mediaDevices.getUserMedia({video:{...size,facingMode:{ideal:'user'}}});
 }
 
-async function openCamera(which, videoId, pageId){
+async function openCamera(which, videoId, pageId, isCurrent = ()=>true){
   if(cameraStartInProgress)return null;
   cameraStartInProgress = true;
   const toggle = document.getElementById('btn-switch-'+which);
   toggle.disabled = true;
   try{
     const stream = await getStream();
-    if(!document.getElementById(pageId).classList.contains('active') ||
+    if(!isCurrent() || !document.getElementById(pageId).classList.contains('active') ||
        !document.body.classList.contains('attendance-signed-in')){
       stream.getTracks().forEach(track=>track.stop());
       return null;
@@ -994,26 +1009,43 @@ async function openCamera(which, videoId, pageId){
   }
 }
 
-async function startAttendanceCam(){
-  if(!people.length){ toast('No registered faces found. Please register people first.','error'); return; }
-  try{await ensureFaceModels();}catch(error){toast(error.message,'error');return;}
-  if(!document.getElementById('page-attendance').classList.contains('active'))return;
-  if(!matcherReady){ toast('No registered faces found. Please register people first.','error'); return; }
+function renderAttendanceControls(){
+  const pending = attendanceDirection !== null;
+  document.getElementById('btn-punch-in').disabled = pending || punching;
+  document.getElementById('btn-punch-out').disabled = pending || punching;
+  document.getElementById('btn-stop-att').hidden = !pending;
+  document.getElementById('att-cam-wrap').hidden = !pending;
+}
+
+async function startAttendanceCam(direction){
+  if(!['in','out'].includes(direction) || attendanceDirection || punching || cameraStartInProgress)return;
+  if(!people.length){toast('No registered faces found. Please register people first.','error');return;}
+  attendanceDirection = direction;
+  const cameraGeneration = ++attCameraGeneration;
+  const isCurrent = ()=>cameraGeneration === attCameraGeneration;
+  const status = document.getElementById('rec-status');
+  renderAttendanceControls();
+  status.textContent = direction === 'in' ? 'Preparing punch-in…' : 'Preparing punch-out…';
   try{
-    if(!await openCamera('att','cam-video','page-attendance'))return;
-    document.getElementById('btn-start-att').disabled = true;
-    document.getElementById('btn-punch-in').style.display = 'inline-flex';
-    document.getElementById('btn-punch-out').style.display = 'inline-flex';
-    document.getElementById('btn-stop-att').disabled = false;
+    await ensureFaceModels();
+    if(!isCurrent())return;
+    if(!matcherReady)throw new Error('No registered faces found. Please register people first.');
+    if(!await openCamera('att','cam-video','page-attendance',isCurrent)){
+      if(isCurrent())stopCam('att');
+      return;
+    }
+    if(!isCurrent())return;
     document.getElementById('scan-line').style.display = 'block';
     attRunning = true;
-    attCameraGeneration++;lastChallengeVideoTime=-1;
+    lastChallengeVideoTime = -1;
     resetCameraChallenge();
+    status.textContent = (direction === 'in' ? 'Punch In' : 'Punch Out') + ' selected. Scanning for a face…';
     runAttendanceLoop();
-    document.getElementById('rec-status').textContent = 'Scanning for faces…';
-    toast('Camera started. Looking for faces…','info');
-  } catch(e){
-    toast('Camera access denied: '+e.message,'error');
+  }catch(error){
+    if(!isCurrent())return;
+    stopCam('att');
+    status.textContent = error.message;
+    toast(error.message,'error');
   }
 }
 
@@ -1085,7 +1117,7 @@ async function runAttendanceLoop(){
         if(document.hidden){recognizedPersonId=null;resetCameraChallenge();attTimer=setTimeout(()=>requestAnimationFrame(runAttendanceLoop),200);return;}
         const challengePassed=person&&attendanceChallenge.observe(person.id,handObservation);
         renderCameraChallenge();
-        if(challengePassed&&person) await markAttendance(match.label, person);
+        if(challengePassed && person && attendanceDirection) await punchCloud(attendanceDirection,person);
       } else {
         recognizedPersonId = null;
         resetCameraChallenge('Show a registered face to begin.');
@@ -1117,18 +1149,18 @@ function stopCam(which){
   if((which === 'att' ? attStream : regStream) && cancelCameraMetadataWait)cancelCameraMetadataWait();
   if(which==='att'){
     attCameraGeneration++;lastChallengeVideoTime=-1;
-    resetCameraChallenge('Camera stopped. Start it to begin a new challenge.');
+    attendanceDirection = null;
+    resetCameraChallenge('Choose a punch option to begin.');
     if(attStream) attStream.getTracks().forEach(t=>t.stop());
     clearTimeout(attTimer);
     attStream=null; attRunning=false; recognizedPersonId=null;
     document.getElementById('scan-line').style.display='none';
     document.getElementById('cam-video').srcObject=null;
     document.getElementById('cam-canvas').getContext('2d').clearRect(0,0,9999,9999);
-    document.getElementById('btn-start-att').disabled=false;
-    document.getElementById('btn-punch-in').style.display = 'none';
-    document.getElementById('btn-punch-out').style.display = 'none';
-    document.getElementById('btn-stop-att').disabled=true;
-    document.getElementById('rec-status').textContent='Camera stopped';
+    renderAttendanceControls();
+    document.getElementById('rec-status').textContent='Camera off';
+    document.getElementById('conf-bar').style.width='0%';
+    document.getElementById('conf-val').textContent='—';
     document.getElementById('cam-name-tag').style.display='none';
   } else {
     if(regStream) regStream.getTracks().forEach(t=>t.stop());
@@ -1142,63 +1174,6 @@ function stopCam(which){
   }
 }
 
-// Manual Punch In / Punch Out functions
-async function manualPunch(type){
-  if(!matcherReady || !people.length){
-    toast('No registered people found. Register someone first.', 'error');
-    return;
-  }
-  // For quick manual demonstration or when face is in front of camera
-  const person = people.find(p=>p.id===recognizedPersonId);
-  if(!attRunning || !person){ toast('Position a registered face in the camera first.', 'error'); return; }
-  const today = todayStr();
-  const nowStr = nowTimeStr();
-  let existing = records.find(r => r.personId === person.id && r.date === today);
-
-  if(type === 'in'){
-    if(existing){
-      toast(`${person.name} has already punched in today.`, 'error');
-      return;
-    }
-    const rec = {
-      id: Date.now()+'',
-      personId: person.id,
-      name: person.name,
-      role: person.role||'',
-      date: today,
-      time: nowStr,
-      punchOut: null,
-      hours: 0,
-      method: 'Manual Button',
-      status: 'In Progress'
-    };
-    records.push(rec);
-    saveRecords();
-    await syncWithCloud(false);
-    renderMarkedToday();
-    updateSidebarStats();
-    toast(`Punch-IN recorded for ${person.name}`,'success');
-  } else {
-    if(!existing){
-      toast(`${person.name} has not punched in today yet.`, 'error');
-      return;
-    }
-    if(existing.punchOut){
-      toast(`${person.name} has already punched out today.`, 'error');
-      return;
-    }
-    existing.punchOut = nowStr;
-    const hrs = calculateHours(existing.time, existing.punchOut);
-    existing.hours = parseFloat(hrs.toFixed(2));
-    const st = getAttendanceStatus(existing.hours);
-    existing.status = st.label;
-    saveRecords();
-    await syncWithCloud(false);
-    renderMarkedToday();
-    updateSidebarStats();
-    toast(`Punch-OUT recorded for ${person.name} (${existing.hours} hrs - ${existing.status})`,'success');
-  }
-}
 function getSettings(){
   return {
     fullDayHours: parseFloat(localStorage.getItem('fa_fullday') || '8'),
@@ -1254,49 +1229,6 @@ function getAttendanceStatus(hours){
 // ═══════════════════════════════════════
 //  MARK ATTENDANCE (PUNCH IN / PUNCH OUT)
 // ═══════════════════════════════════════
-const recentlyMarked = new Set(); // per session cooldown
-
-async function markAttendance(personId, person){
-  if(!person || records.some(r=>r.personId===personId && r.date===todayStr())) return;
-  const today = todayStr();
-  const nowStr = nowTimeStr();
-  if(recentlyMarked.has(personId)) return;
-  recentlyMarked.add(personId);
-  setTimeout(()=>recentlyMarked.delete(personId), 6000);
-
-  // Find existing record for today
-  let existing = records.find(r => r.personId === personId && r.date === today);
-
-  if(!existing){
-    // Punch In
-    const rec = {
-      id: Date.now()+'',
-      personId,
-      name: person ? person.name : personId,
-      role: person ? (person.role||'') : '',
-      date: today,
-      time: nowStr,      // Punch In time
-      punchOut: null,
-      hours: 0,
-      method: 'Face Recognition',
-      status: 'In Progress'
-    };
-    records.push(rec);
-    saveRecords();
-    await syncWithCloud(false);
-    renderMarkedToday();
-    updateSidebarStats();
-    toast(`Punch-IN recorded for ${rec.name} at ${nowStr}`,'success');
-  }
-
-  // flash the cam wrap
-  const wrap = document.getElementById('att-cam-wrap');
-  if(wrap){
-    wrap.classList.add('flash-success');
-    setTimeout(()=>wrap.classList.remove('flash-success'),700);
-  }
-}
-
 function renderMarkedToday(){
   const today = todayStr();
   const todayRecs = records.filter(r=>r.date===today).sort((a,b)=>b.time.localeCompare(a.time));
@@ -1584,12 +1516,11 @@ if(location.protocol === 'file:'){
 </script>
 <div id="account-gate">
   <header class="account-header account-wrap">
-    <a class="account-brand" href="../"><img src="../favicon.ico" width="32" height="32" alt="">FaceAttend</a>
+    <a class="account-brand" href="../"><img src="../assets/faceattend-logo.png" width="32" height="32" alt="">FaceAttend</a>
     <a href="../#how-it-works">How it works</a>
   </header>
   <main class="account-main account-wrap">
     <div class="account-intro">
-      <nav class="breadcrumbs" aria-label="Breadcrumb"><a href="../">Home</a> / <span aria-current="page">Attendance workspace</span></nav>
       <h1>Sign in to FaceAttend</h1>
       <p>Register, mark attendance, and view records from your workspace.</p>
     </div>
@@ -1608,6 +1539,18 @@ if(location.protocol === 'file:'){
     </div>
   </main>
 </div>
-<script src="../cloud.js?v=171d8c06f423"></script>
+<dialog id="ownership-dialog" class="card" aria-labelledby="ownership-title">
+  <h2 id="ownership-title">Make owner</h2>
+  <p id="ownership-member"></p>
+  <form id="ownership-form">
+    <fieldset>
+      <div class="form-group"><label for="ownership-pin">Owner PIN</label><input id="ownership-pin" type="password" inputmode="numeric" autocomplete="off" pattern="[0-9]{4}" maxlength="4" required autofocus></div>
+      <button id="ownership-submit" type="submit" class="btn btn-primary">Grant ownership</button>
+      <button type="button" class="btn btn-ghost" onclick="this.closest('dialog').close()">Cancel</button>
+    </fieldset>
+    <p id="ownership-message" role="status"></p>
+  </form>
+</dialog>
+<script src="../cloud.js?v=ccf7f56a3c8a"></script>
 </body>
 </html>

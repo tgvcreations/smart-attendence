@@ -17,7 +17,7 @@ class FaceChallenge {
    if(this.hold(!observation.raised,now)){this.phase='raise';this.heldSince=null;this.hits=0;this.message='Raise either hand beside your face, with your palm toward the camera. Hold it there.';}
   }else{
    this.message='Raise either hand beside your face, with your palm toward the camera. Hold it there.';
-   if(this.hold(observation.raised,now)){this.phase='passed';this.validUntil=now+5000;this.message='Raise-hand challenge passed. Attendance controls are ready.';return true;}
+   if(this.hold(observation.raised,now)){this.phase='passed';this.validUntil=now+5000;this.message='Identity verified. Processing attendance…';return true;}
   }
   return false;
  }
@@ -75,8 +75,6 @@ async function detectRaisedHand(video,face){
 const attendanceChallenge=new FaceChallenge();
 function renderCameraChallenge(){
  const el=document.getElementById('liveness-status');if(el)el.textContent=attendanceChallenge.message;
- const ready=typeof attRunning!=='undefined'&&attRunning&&attendanceChallenge.ready(recognizedPersonId);
- for(const id of ['btn-punch-in','btn-punch-out']){const button=document.getElementById(id);if(button)button.disabled=!ready;}
 }
 function resetCameraChallenge(message){attendanceChallenge.reset(message);renderCameraChallenge();}
 document.addEventListener('visibilitychange',()=>{if(document.hidden)resetCameraChallenge('Return to the camera and complete a new challenge.');});
